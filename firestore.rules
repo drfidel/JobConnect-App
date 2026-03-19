@@ -1,0 +1,171 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - uid: string (required)
+    //   - email: string (required)
+    //   - role: string (required, ['employer', 'seeker', 'admin'])
+    //   - displayName: string
+    //   - photoURL: string
+    //   - companyId: string
+    //   - bio: string
+    //   - skills: list
+    //   - experience: list
+    //   - education: list
+    //   - createdAt: timestamp
+    //
+    // Collection: jobs
+    // Document ID: jobId
+    // Fields:
+    //   - employerId: string (required)
+    //   - companyId: string (required)
+    //   - title: string (required)
+    //   - description: string (required)
+    //   - salaryRange: string
+    //   - location: string (required)
+    //   - jobType: string (required, ['full-time', 'part-time', 'internship', 'contract'])
+    //   - category: string
+    //   - requirements: list
+    //   - status: string (required, ['pending', 'active', 'closed', 'rejected'])
+    //   - createdAt: timestamp
+    //
+    // Collection: applications
+    // Document ID: applicationId
+    // Fields:
+    //   - jobId: string (required)
+    //   - seekerId: string (required)
+    //   - employerId: string (required)
+    //   - status: string (required, ['applied', 'reviewed', 'accepted', 'rejected'])
+    //   - resumeURL: string
+    //   - coverLetter: string
+    //   - createdAt: timestamp
+    //
+    // Collection: companies
+    // Document ID: companyId
+    // Fields:
+    //   - ownerId: string (required)
+    //   - name: string (required)
+    //   - description: string
+    //   - logoURL: string
+    //   - website: string
+    //   - location: string (required)
+    //   - createdAt: timestamp
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "akiyofidel@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isEmployer() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'employer';
+    }
+
+    function isSeeker() {
+      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'seeker';
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser(data) {
+      return hasRequiredFields(['uid', 'email', 'role']) &&
+             data.uid == request.auth.uid &&
+             data.email == request.auth.token.email &&
+             data.role in ['employer', 'seeker', 'admin'] &&
+             (data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
+             (data.bio == null || (data.bio is string && data.bio.size() < 1000));
+    }
+
+    function isValidJob(data) {
+      return hasRequiredFields(['employerId', 'companyId', 'title', 'description', 'location', 'jobType', 'status']) &&
+             data.employerId == request.auth.uid &&
+             data.jobType in ['full-time', 'part-time', 'internship', 'contract'] &&
+             data.status in ['pending', 'active', 'closed', 'rejected'] &&
+             data.title is string && data.title.size() < 200 &&
+             data.description is string && data.description.size() < 5000;
+    }
+
+    function isValidApplication(data) {
+      return hasRequiredFields(['jobId', 'seekerId', 'employerId', 'status']) &&
+             data.seekerId == request.auth.uid &&
+             data.status in ['applied', 'reviewed', 'accepted', 'rejected'] &&
+             (data.coverLetter == null || (data.coverLetter is string && data.coverLetter.size() < 5000));
+    }
+
+    function isValidCompany(data) {
+      return hasRequiredFields(['ownerId', 'name', 'location']) &&
+             data.ownerId == request.auth.uid &&
+             data.name is string && data.name.size() < 200 &&
+             data.location is string && data.location.size() < 200;
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && isOwner(userId) && (request.resource.data.role != 'admin' || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && isOwner(userId) && (request.resource.data.role == resource.data.role || isAdmin());
+    }
+
+    match /jobs/{jobId} {
+      allow read: if resource.data.status == 'active' || isOwner(resource.data.employerId) || isAdmin();
+      allow create: if isAuthenticated() && isEmployer() && isValidJob(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.employerId) || isAdmin()) && isValidJob(request.resource.data);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.employerId) || isAdmin());
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.seekerId) || isOwner(resource.data.employerId) || isAdmin());
+      allow create: if isAuthenticated() && isSeeker() && isValidApplication(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.seekerId) || isOwner(resource.data.employerId) || isAdmin()) && isValidApplication(request.resource.data);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.seekerId) || isAdmin());
+    }
+
+    match /companies/{companyId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isEmployer() && isValidCompany(request.resource.data);
+      allow update: if isAuthenticated() && (isOwner(resource.data.ownerId) || isAdmin()) && isValidCompany(request.resource.data);
+      allow delete: if isAuthenticated() && (isOwner(resource.data.ownerId) || isAdmin());
+    }
+
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}

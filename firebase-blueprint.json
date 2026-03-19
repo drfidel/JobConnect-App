@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the platform (Employer, Job Seeker, or Admin)",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["employer", "seeker", "admin"] },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string", "format": "uri" },
+        "companyId": { "type": "string", "description": "For employers, the ID of their company" },
+        "bio": { "type": "string" },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "experience": { "type": "array", "items": { "type": "object" } },
+        "education": { "type": "array", "items": { "type": "object" } },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Job": {
+      "title": "Job",
+      "description": "A job listing posted by an employer",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employerId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "salaryRange": { "type": "string" },
+        "location": { "type": "string" },
+        "jobType": { "type": "string", "enum": ["full-time", "part-time", "internship", "contract"] },
+        "category": { "type": "string" },
+        "requirements": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["pending", "active", "closed", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["employerId", "companyId", "title", "description", "location", "jobType", "status"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "A job application submitted by a seeker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "jobId": { "type": "string" },
+        "seekerId": { "type": "string" },
+        "employerId": { "type": "string" },
+        "status": { "type": "string", "enum": ["applied", "reviewed", "accepted", "rejected"] },
+        "resumeURL": { "type": "string", "format": "uri" },
+        "coverLetter": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["jobId", "seekerId", "employerId", "status"]
+    },
+    "Company": {
+      "title": "Company",
+      "description": "A company profile",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "logoURL": { "type": "string", "format": "uri" },
+        "website": { "type": "string", "format": "uri" },
+        "location": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "location"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/jobs/{jobId}": {
+      "schema": "Job",
+      "description": "Job listings"
+    },
+    "/applications/{applicationId}": {
+      "schema": "Application",
+      "description": "Job applications"
+    },
+    "/companies/{companyId}": {
+      "schema": "Company",
+      "description": "Company profiles"
+    }
+  }
+}
