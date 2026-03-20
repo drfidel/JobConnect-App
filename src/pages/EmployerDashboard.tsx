@@ -202,12 +202,21 @@ export default function EmployerDashboard() {
           <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">Employer Dashboard</h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your job listings and track applicants.</p>
         </div>
-        <button 
-          onClick={() => setIsAddingJob(true)}
-          className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-        >
-          <Plus size={20} /> Post a New Job
-        </button>
+        {!company ? (
+          <button 
+            onClick={() => { setActiveTab('company'); setIsEditingCompany(true); }}
+            className="flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
+          >
+            <Building2 size={20} /> Create Company Profile
+          </button>
+        ) : (
+          <button 
+            onClick={() => setIsAddingJob(true)}
+            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
+          >
+            <Plus size={20} /> Post a New Job
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -251,11 +260,16 @@ export default function EmployerDashboard() {
                           Posted {formatDistanceToNow(job.createdAt?.toDate() || new Date())} ago
                         </span>
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">{job.title}</h3>
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-xl font-bold text-gray-900 dark:text-white">{job.title}</h3>
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-full">
+                          <Users size={12} />
+                          {applications.filter(a => a.jobId === job.id).length} Applicants
+                        </div>
+                      </div>
                       <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-gray-400">
                         <div className="flex items-center gap-1.5"><MapPin size={16} /> {job.location}</div>
                         <div className="flex items-center gap-1.5"><Clock size={16} /> {job.jobType}</div>
-                        <div className="flex items-center gap-1.5"><Users size={16} /> {applications.filter(a => a.jobId === job.id).length} Applicants</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

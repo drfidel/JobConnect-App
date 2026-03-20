@@ -4,7 +4,7 @@ import { doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp
 import { db } from '../firebase';
 import { useAuth } from '../App';
 import { Job, Company, Application } from '../types';
-import { MapPin, Briefcase, DollarSign, Clock, Calendar, ChevronLeft, Building2, Share2, Bookmark, Loader2, CheckCircle2, AlertCircle, FileText, Send } from 'lucide-react';
+import { MapPin, Briefcase, DollarSign, Clock, Calendar, ChevronLeft, Building2, Share2, Bookmark, Loader2, CheckCircle2, AlertCircle, FileText, Send, Star } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
@@ -117,6 +117,13 @@ export default function JobDetails() {
                   )}
                 </div>
                 <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    {job.featured && (
+                      <span className="px-2.5 py-0.5 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-yellow-100 dark:border-yellow-900/50 shadow-sm">
+                        <Star size={10} fill="currentColor" /> Featured Role
+                      </span>
+                    )}
+                  </div>
                   <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">{job.title}</h1>
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 dark:text-zinc-400 font-medium">
                     <Link to={`/company/${job.companyId}`} className="text-blue-600 dark:text-blue-400 hover:underline">{company?.name || 'Unknown Company'}</Link>

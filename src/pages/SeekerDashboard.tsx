@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, orderBy, limit, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../App';
-import { Job, Application, Company } from '../types';
-import { Briefcase, CheckCircle, Clock, XCircle, Search, MapPin, DollarSign, Loader2, User, FileText, Bookmark, ChevronRight, LayoutDashboard, Settings } from 'lucide-react';
+import { Job, Application, Company, JobAlert } from '../types';
+import { Briefcase, CheckCircle, Clock, XCircle, Search, MapPin, DollarSign, Loader2, User, FileText, Bookmark, ChevronRight, LayoutDashboard, Settings, Bell, Plus, Trash2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router-dom';
@@ -13,8 +13,16 @@ export default function SeekerDashboard() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [jobs, setJobs] = useState<Record<string, Job>>({});
   const [companies, setCompanies] = useState<Record<string, Company>>({});
+  const [alerts, setAlerts] = useState<JobAlert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'applications' | 'saved' | 'profile'>('applications');
+  const [activeTab, setActiveTab] = useState<'applications' | 'saved' | 'profile' | 'alerts'>('applications');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+
+  // Job Alert Form State
+  const [alertKeywords, setAlertKeywords] = useState('');
+  const [alertLocation, setAlertLocation] = useState('');
+  const [alertJobType, setAlertJobType] = useState('all');
+  const [isAddingAlert, setIsAddingAlert] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -55,10 +63,18 @@ export default function SeekerDashboard() {
       setCompanies(companiesMap);
     });
 
+    // Fetch Seeker's Job Alerts
+    const alertsRef = collection(db, 'job_alerts');
+    const qAlerts = query(alertsRef, where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
+    const unsubscribeAlerts = onSnapshot(qAlerts, (snapshot) => {
+      setAlerts(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobAlert)));
+    });
+
     return () => {
       unsubscribeApps();
       unsubscribeJobs();
       unsubscribeCompanies();
+      unsubscribeAlerts();
     };
   }, [user]);
 
@@ -77,6 +93,46 @@ export default function SeekerDashboard() {
       case 'rejected': return <XCircle size={14} />;
       case 'reviewed': return <Clock size={14} />;
       default: return <Clock size={14} />;
+    }
+  };
+
+  const handleAddAlert = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      await addDoc(collection(db, 'job_alerts'), {
+        userId: user.uid,
+        keywords: alertKeywords,
+        location: alertLocation,
+        jobType: alertJobType,
+        enabled: true,
+        createdAt: serverTimestamp()
+      });
+      setAlertKeywords('');
+      setAlertLocation('');
+      setAlertJobType('all');
+      setIsAddingAlert(false);
+    } catch (error) {
+      console.error('Error adding alert:', error);
+    }
+  };
+
+  const handleToggleAlert = async (alertId: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'job_alerts', alertId), {
+        enabled: !currentStatus
+      });
+    } catch (error) {
+      console.error('Error toggling alert:', error);
+    }
+  };
+
+  const handleDeleteAlert = async (alertId: string) => {
+    try {
+      await deleteDoc(doc(db, 'job_alerts', alertId));
+    } catch (error) {
+      console.error('Error deleting alert:', error);
     }
   };
 
@@ -124,6 +180,7 @@ export default function SeekerDashboard() {
         {[
           { id: 'applications', label: 'My Applications', icon: FileText },
           { id: 'saved', label: 'Saved Jobs', icon: Bookmark },
+          { id: 'alerts', label: 'Job Alerts', icon: Bell },
           { id: 'profile', label: 'My Profile', icon: User }
         ].map(tab => (
           <button
@@ -144,9 +201,28 @@ export default function SeekerDashboard() {
       {/* Content Area */}
       <div className="min-h-[400px]">
         {activeTab === 'applications' && (
-          <div className="space-y-4">
-            {applications.length > 0 ? (
-              applications.map((app, index) => {
+          <div className="space-y-6">
+            {/* Status Filters */}
+            <div className="flex flex-wrap gap-2 pb-2">
+              {['all', 'reviewed', 'accepted', 'rejected'].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border ${
+                    statusFilter === status
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-md'
+                      : 'bg-white dark:bg-zinc-900 text-gray-500 dark:text-zinc-400 border-gray-100 dark:border-zinc-800 hover:border-blue-200 dark:hover:border-blue-900/50'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+
+            {applications.filter(app => statusFilter === 'all' || app.status === statusFilter).length > 0 ? (
+              applications
+                .filter(app => statusFilter === 'all' || app.status === statusFilter)
+                .map((app, index) => {
                 const job = jobs[app.jobId];
                 const company = job ? companies[job.companyId] : null;
                 return (
@@ -267,6 +343,150 @@ export default function SeekerDashboard() {
                   Edit Full Profile
                 </Link>
               </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'alerts' && (
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Job Alerts</h2>
+                <p className="text-gray-500 dark:text-zinc-400">Get notified when new jobs match your preferences.</p>
+              </div>
+              <button
+                onClick={() => setIsAddingAlert(true)}
+                className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition-all"
+              >
+                <Plus size={18} /> Create Alert
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {isAddingAlert && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="overflow-hidden"
+                >
+                  <form onSubmit={handleAddAlert} className="bg-white dark:bg-zinc-900 p-8 rounded-3xl border border-blue-100 dark:border-blue-900/30 shadow-sm space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Keywords</label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <input
+                            type="text"
+                            value={alertKeywords}
+                            onChange={(e) => setAlertKeywords(e.target.value)}
+                            placeholder="e.g. Developer, Designer"
+                            className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Location</label>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <input
+                            type="text"
+                            value={alertLocation}
+                            onChange={(e) => setAlertLocation(e.target.value)}
+                            placeholder="e.g. Kampala, Remote"
+                            className="w-full pl-10 pr-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-2">Job Type</label>
+                        <select
+                          value={alertJobType}
+                          onChange={(e) => setAlertJobType(e.target.value)}
+                          className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none dark:text-white appearance-none"
+                        >
+                          <option value="all">All Types</option>
+                          <option value="full-time">Full-time</option>
+                          <option value="part-time">Part-time</option>
+                          <option value="contract">Contract</option>
+                          <option value="internship">Internship</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-end gap-4 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingAlert(false)}
+                        className="px-6 py-2.5 text-gray-500 dark:text-zinc-400 font-bold hover:text-gray-700 dark:hover:text-zinc-200"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-8 py-2.5 bg-blue-600 text-white font-bold rounded-xl shadow-md hover:bg-blue-700 transition-all"
+                      >
+                        Save Alert
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="grid grid-cols-1 gap-4">
+              {alerts.length > 0 ? (
+                alerts.map((alert) => (
+                  <div key={alert.id} className="bg-white dark:bg-zinc-900 p-6 rounded-2xl border border-gray-100 dark:border-zinc-800 shadow-sm flex items-center justify-between group">
+                    <div className="flex items-center gap-6">
+                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center border transition-all ${
+                        alert.enabled 
+                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' 
+                          : 'bg-gray-50 dark:bg-zinc-800 text-gray-400 dark:text-zinc-600 border-gray-100 dark:border-zinc-700'
+                      }`}>
+                        <Bell size={24} />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                          {alert.keywords}
+                          {!alert.enabled && <span className="text-[10px] uppercase tracking-widest bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-500 px-2 py-0.5 rounded-full font-black">Disabled</span>}
+                        </h4>
+                        <div className="flex items-center gap-4 text-sm text-gray-500 dark:text-zinc-400 mt-1">
+                          <span className="flex items-center gap-1"><MapPin size={14} /> {alert.location || 'Anywhere'}</span>
+                          <span className="flex items-center gap-1"><Briefcase size={14} /> {alert.jobType === 'all' ? 'All Types' : alert.jobType}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <button
+                        onClick={() => handleToggleAlert(alert.id, alert.enabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          alert.enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-zinc-700'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            alert.enabled ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAlert(alert.id)}
+                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                        title="Delete Alert"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-20 bg-white dark:bg-zinc-900 rounded-3xl border border-dashed border-gray-200 dark:border-zinc-800">
+                  <Bell className="mx-auto text-gray-300 dark:text-zinc-700 mb-4" size={48} />
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">No job alerts</h3>
+                  <p className="text-gray-500 dark:text-zinc-400">Create alerts to get notified about new job opportunities.</p>
+                </div>
+              )}
             </div>
           </div>
         )}

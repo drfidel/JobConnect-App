@@ -14,6 +14,7 @@ export default function Home() {
   const [searchTerm, setSearchTerm] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [featuredFilter, setFeaturedFilter] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,8 @@ export default function Home() {
                          job.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesLocation = !locationFilter || job.location.toLowerCase().includes(locationFilter.toLowerCase());
     const matchesType = !typeFilter || job.jobType === typeFilter;
-    return matchesSearch && matchesLocation && matchesType;
+    const matchesFeatured = !featuredFilter || job.featured === true;
+    return matchesSearch && matchesLocation && matchesType && matchesFeatured;
   });
 
   const locations = ["Kampala", "Entebbe", "Gulu", "Mbarara", "Jinja", "Lira", "Mbale", "Fort Portal", "Remote"];
@@ -146,49 +148,81 @@ export default function Home() {
 
       {/* Featured Jobs */}
       {featuredJobs.length > 0 && (
-        <section className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <Star className="text-yellow-500 fill-yellow-500" size={24} /> Featured Opportunities
-            </h2>
-            <Link to="/jobs" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">View all featured</Link>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {featuredJobs.map(job => (
-              <Link 
-                key={job.id} 
-                to={`/jobs/${job.id}`}
-                className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-blue-100 dark:border-blue-900/30 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group"
+        <section className="relative py-12 px-8 rounded-[2.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-900/40 dark:to-indigo-900/40 overflow-hidden shadow-2xl">
+          {/* Decorative background patterns */}
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+          
+          <div className="relative z-10 space-y-8">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-3xl font-black text-white flex items-center gap-3 tracking-tight">
+                  <Star className="text-yellow-400 fill-yellow-400 animate-pulse" size={32} /> Featured Opportunities
+                </h2>
+                <p className="text-blue-100/70 font-medium">Hand-picked premium roles from top companies</p>
+              </div>
+              <button 
+                onClick={() => {
+                  setFeaturedFilter(true);
+                  document.getElementById('job-listings')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-6 py-2 bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 rounded-xl text-sm font-bold text-white transition-all"
               >
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="w-14 h-14 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center overflow-hidden border border-blue-100 dark:border-blue-900/30 group-hover:bg-blue-600 transition-colors">
-                    {companies[job.companyId]?.logoURL ? (
-                      <img src={companies[job.companyId].logoURL} alt="Logo" className="w-full h-full object-cover" />
-                    ) : (
-                      <Briefcase className="text-blue-600 dark:text-blue-400 group-hover:text-white" size={28} />
-                    )}
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{job.title}</h4>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">{companies[job.companyId]?.name}</p>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-3 mb-6">
-                  <span className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                    {job.jobType}
-                  </span>
-                  <span className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold rounded-full uppercase tracking-wider">
-                    {job.location}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-bold text-gray-900 dark:text-white">{job.salaryRange || 'Negotiable'}</span>
-                  <span className="text-blue-600 dark:text-blue-400 font-bold flex items-center gap-1">
-                    Apply <ChevronRight size={16} />
-                  </span>
-                </div>
-              </Link>
-            ))}
+                View All Featured
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {featuredJobs.map((job, index) => (
+                <motion.div
+                  key={job.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Link 
+                    to={`/jobs/${job.id}`}
+                    className="block h-full bg-white/10 hover:bg-white/20 backdrop-blur-xl p-8 rounded-3xl border border-white/10 hover:border-white/30 shadow-lg hover:shadow-2xl transition-all group relative overflow-hidden"
+                  >
+                    {/* Subtle shine effect */}
+                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 -translate-x-full group-hover:translate-x-full"></div>
+                    
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center overflow-hidden shadow-inner p-2">
+                        {companies[job.companyId]?.logoURL ? (
+                          <img src={companies[job.companyId].logoURL} alt="Logo" className="w-full h-full object-contain" />
+                        ) : (
+                          <Briefcase className="text-blue-600" size={32} />
+                        )}
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <h4 className="font-bold text-white text-lg truncate group-hover:text-blue-200 transition-colors">{job.title}</h4>
+                        <p className="text-sm text-blue-100/60 truncate font-medium">{companies[job.companyId]?.name}</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-8">
+                      <span className="px-3 py-1 bg-white/10 text-white text-[10px] font-bold rounded-full uppercase tracking-wider border border-white/10">
+                        {job.jobType}
+                      </span>
+                      <span className="px-3 py-1 bg-white/10 text-white text-[10px] font-bold rounded-full uppercase tracking-wider border border-white/10">
+                        {job.location}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between mt-auto">
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] text-blue-100/50 uppercase font-black tracking-widest">Salary Range</p>
+                        <span className="font-bold text-white text-lg">{job.salaryRange || 'Negotiable'}</span>
+                      </div>
+                      <div className="w-10 h-10 bg-white text-blue-600 rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <ChevronRight size={20} />
+                      </div>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </section>
       )}
@@ -257,6 +291,20 @@ export default function Home() {
               </div>
 
               <div className="pt-6 border-t border-gray-50 dark:border-gray-800">
+                <label className="flex items-center group cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="w-4 h-4 text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-700 focus:ring-blue-500 rounded"
+                    checked={featuredFilter}
+                    onChange={(e) => setFeaturedFilter(e.target.checked)}
+                  />
+                  <span className="ml-3 text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Star size={14} className="text-yellow-500 fill-yellow-500" /> Featured Only
+                  </span>
+                </label>
+              </div>
+
+              <div className="pt-6 border-t border-gray-50 dark:border-gray-800">
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
                   <h4 className="font-bold text-blue-900 dark:text-blue-200 text-sm mb-2">Get Job Alerts</h4>
                   <p className="text-xs text-blue-700 dark:text-blue-300 mb-4 leading-relaxed">We'll notify you when new jobs matching your criteria are posted.</p>
@@ -270,7 +318,7 @@ export default function Home() {
         </aside>
 
         {/* Job Listings */}
-        <div className="lg:col-span-3 space-y-6">
+        <div id="job-listings" className="lg:col-span-3 space-y-6">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {loading ? 'Loading jobs...' : `${filteredJobs.length} Jobs Found`}
@@ -316,6 +364,11 @@ export default function Home() {
                         
                         <div className="flex-grow">
                           <div className="flex flex-wrap items-center gap-2 mb-2">
+                            {job.featured && (
+                              <span className="px-2.5 py-0.5 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-xs font-bold rounded-full uppercase tracking-wider flex items-center gap-1 border border-yellow-100 dark:border-yellow-900/50">
+                                <Star size={10} fill="currentColor" /> Featured
+                              </span>
+                            )}
                             <span className="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-full uppercase tracking-wider">
                               {job.jobType.replace('-', ' ')}
                             </span>

@@ -52,3 +52,13 @@ export interface Company {
   location: string;
   createdAt: any;
 }
+
+export interface JobAlert {
+  id: string;
+  userId: string;
+  keywords: string;
+  location: string;
+  jobType: string;
+  enabled: boolean;
+  createdAt: any;
+}
