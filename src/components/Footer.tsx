@@ -12,10 +12,10 @@ export default function Footer() {
               <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
                 <Briefcase size={24} />
               </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">JobConnect <span className="text-blue-600">Uganda</span></span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">UMA <span className="text-blue-600">Job Portal</span></span>
             </Link>
             <p className="text-gray-500 dark:text-gray-400 leading-relaxed">
-              The leading job platform in Uganda, connecting talented professionals with top employers across the country.
+              The official job portal for the Uganda Medical Association, connecting medical professionals with healthcare opportunities across Uganda.
             </p>
             <div className="flex items-center space-x-4">
               <a href="#" className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 hover:bg-blue-600 hover:text-white transition-all">
@@ -74,7 +74,7 @@ export default function Footer() {
 
         <div className="pt-8 border-t border-gray-50 dark:border-gray-800 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-gray-400 dark:text-gray-500 text-sm">
-            © {new Date().getFullYear()} JobConnect Uganda. All rights reserved.
+            © {new Date().getFullYear()} Uganda Medical Association Job Portal. All rights reserved.
           </p>
           <div className="flex items-center space-x-6 text-sm">
             <a href="#" className="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</a>

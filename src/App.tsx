@@ -1,8 +1,7 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, db } from './firebase';
+import { User } from 'firebase/auth';
+import { authService } from './services/authService';
 import { UserProfile } from './types';
 import ErrorBoundary from './components/ErrorBoundary';
 import Navbar from './components/Navbar';
@@ -55,15 +54,15 @@ export default function App() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    const unsubscribe = authService.onAuthStateChange(async (user) => {
       setUser(user);
       if (user) {
         // Fetch user profile
-        const profileRef = doc(db, 'users', user.uid);
-        const profileSnap = await getDoc(profileRef);
-        if (profileSnap.exists()) {
-          setProfile(profileSnap.data() as UserProfile);
-        } else {
+        try {
+          const userProfile = await authService.getUserProfile(user.uid);
+          setProfile(userProfile);
+        } catch (error) {
+          console.error("Error fetching profile:", error);
           setProfile(null);
         }
       } else {

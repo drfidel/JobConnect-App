@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase';
 import { useAuth } from '../App';
-import { UserProfile } from '../types';
-import { User, Mail, Briefcase, MapPin, Plus, Trash2, Save, Loader2, CheckCircle2, AlertCircle, Camera, GraduationCap, Code, FileText, Upload, X } from 'lucide-react';
+import { UserProfile, Experience, Education } from '../types';
+import { User, Mail, Briefcase, MapPin, Plus, Trash2, Save, Loader2, CheckCircle2, AlertCircle, Camera, GraduationCap, Code, FileText, Upload, X, Building2, Calendar } from 'lucide-react';
+import SkillAutocomplete from '../components/SkillAutocomplete';
 import { motion, AnimatePresence } from 'motion/react';
+import { profileService } from '../services/profileService';
 
 export default function Profile() {
   const { user, profile } = useAuth();
   const [displayName, setDisplayName] = useState(profile?.displayName || '');
   const [bio, setBio] = useState(profile?.bio || '');
   const [skills, setSkills] = useState<string[]>(profile?.skills || []);
-  const [newSkill, setNewSkill] = useState('');
+  const [experience, setExperience] = useState<Experience[]>(profile?.experience || []);
+  const [education, setEducation] = useState<Education[]>(profile?.education || []);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -27,6 +27,8 @@ export default function Profile() {
       setDisplayName(profile.displayName || '');
       setBio(profile.bio || '');
       setSkills(profile.skills || []);
+      setExperience(profile.experience || []);
+      setEducation(profile.education || []);
     }
   }, [profile]);
 
@@ -35,36 +37,19 @@ export default function Profile() {
     setUploading(true);
     setError('');
 
-    const storagePath = type === 'photo' ? `avatars/${user.uid}` : `resumes/${user.uid}/${file.name}`;
-    const storageRef = ref(storage, storagePath);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (err) => {
-        setError(`Upload failed: ${err.message}`);
-        setUploading(false);
-      },
-      async () => {
-        const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-        try {
-          await updateDoc(doc(db, 'users', user.uid), {
-            [type === 'photo' ? 'photoURL' : 'resumeURL']: downloadURL
-          });
-          setSuccess(true);
-          setTimeout(() => setSuccess(false), 3000);
-        } catch (err: any) {
-          setError(`Failed to update profile with file: ${err.message}`);
-        } finally {
-          setUploading(false);
-          setUploadProgress(0);
-        }
-      }
-    );
+    try {
+      const downloadURL = await profileService.uploadFile(user.uid, file, type === 'photo' ? 'avatars' : 'resumes');
+      await profileService.updateProfile(user.uid, {
+        [type === 'photo' ? 'photoURL' : 'resumeURL']: downloadURL
+      });
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: any) {
+      setError(`Upload failed: ${err.message}`);
+    } finally {
+      setUploading(false);
+      setUploadProgress(0);
+    }
   };
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -74,10 +59,12 @@ export default function Profile() {
     setError('');
     setSuccess(false);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
+      await profileService.updateProfile(user.uid, {
         displayName,
         bio,
-        skills
+        skills,
+        experience,
+        education
       });
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
@@ -88,15 +75,49 @@ export default function Profile() {
     }
   };
 
-  const addSkill = () => {
-    if (newSkill && !skills.includes(newSkill)) {
-      setSkills([...skills, newSkill]);
-      setNewSkill('');
-    }
-  };
-
   const removeSkill = (skillToRemove: string) => {
     setSkills(skills.filter(s => s !== skillToRemove));
+  };
+
+  const addExperience = () => {
+    const newExp: Experience = {
+      id: Math.random().toString(36).substring(2, 9),
+      company: '',
+      position: '',
+      location: '',
+      startDate: '',
+      current: false,
+      description: ''
+    };
+    setExperience([...experience, newExp]);
+  };
+
+  const updateExperience = (id: string, field: keyof Experience, value: any) => {
+    setExperience(experience.map(exp => exp.id === id ? { ...exp, [field]: value } : exp));
+  };
+
+  const removeExperience = (id: string) => {
+    setExperience(experience.filter(exp => exp.id !== id));
+  };
+
+  const addEducation = () => {
+    const newEdu: Education = {
+      id: Math.random().toString(36).substring(2, 9),
+      school: '',
+      degree: '',
+      fieldOfStudy: '',
+      startDate: '',
+      description: ''
+    };
+    setEducation([...education, newEdu]);
+  };
+
+  const updateEducation = (id: string, field: keyof Education, value: any) => {
+    setEducation(education.map(edu => edu.id === id ? { ...edu, [field]: value } : edu));
+  };
+
+  const removeEducation = (id: string) => {
+    setEducation(education.filter(edu => edu.id !== id));
   };
 
   return (
@@ -217,20 +238,14 @@ export default function Profile() {
               ))}
             </div>
             <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder="Add skill..." 
-                className="flex-grow px-3 py-2 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-zinc-700 transition-all text-gray-900 dark:text-white"
-                value={newSkill}
-                onChange={(e) => setNewSkill(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && addSkill()}
+              <SkillAutocomplete 
+                onSelect={(skill) => {
+                  if (!skills.includes(skill)) {
+                    setSkills([...skills, skill]);
+                  }
+                }}
+                existingSkills={skills}
               />
-              <button 
-                onClick={addSkill}
-                className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all"
-              >
-                <Plus size={18} />
-              </button>
             </div>
           </div>
         </div>
@@ -290,6 +305,197 @@ export default function Profile() {
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
                 />
+              </div>
+
+              {/* Work Experience Section */}
+              <div className="pt-6 border-t border-gray-50 dark:border-zinc-800">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <Briefcase className="text-blue-600 dark:text-blue-400" size={20} /> Work Experience
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addExperience}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all"
+                  >
+                    <Plus size={18} /> Add Experience
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {experience.map((exp) => (
+                    <div key={exp.id} className="p-6 bg-gray-50 dark:bg-zinc-800/50 rounded-2xl border border-gray-100 dark:border-zinc-800 relative group">
+                      <button
+                        type="button"
+                        onClick={() => removeExperience(exp.id)}
+                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Company</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={exp.company}
+                            onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
+                            placeholder="e.g. Google"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Position</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={exp.position}
+                            onChange={(e) => updateExperience(exp.id, 'position', e.target.value)}
+                            placeholder="e.g. Senior Developer"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Start Date</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={exp.startDate}
+                            onChange={(e) => updateExperience(exp.id, 'startDate', e.target.value)}
+                            placeholder="e.g. Jan 2020"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">End Date</label>
+                          <input
+                            type="text"
+                            disabled={exp.current}
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white disabled:opacity-50"
+                            value={exp.endDate || ''}
+                            onChange={(e) => updateExperience(exp.id, 'endDate', e.target.value)}
+                            placeholder={exp.current ? 'Present' : 'e.g. Dec 2022'}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-4">
+                        <input
+                          type="checkbox"
+                          id={`current-${exp.id}`}
+                          checked={exp.current}
+                          onChange={(e) => updateExperience(exp.id, 'current', e.target.checked)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <label htmlFor={`current-${exp.id}`} className="text-sm text-gray-600 dark:text-zinc-400">I currently work here</label>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Description</label>
+                        <textarea
+                          rows={3}
+                          className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all resize-none dark:text-white"
+                          value={exp.description}
+                          onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}
+                          placeholder="Describe your achievements and responsibilities..."
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {experience.length === 0 && (
+                    <p className="text-center py-8 text-gray-500 dark:text-zinc-500 italic text-sm">No work experience added yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Education Section */}
+              <div className="pt-6 border-t border-gray-50 dark:border-zinc-800">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    <GraduationCap className="text-blue-600 dark:text-blue-400" size={20} /> Education
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={addEducation}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-bold rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-all"
+                  >
+                    <Plus size={18} /> Add Education
+                  </button>
+                </div>
+                
+                <div className="space-y-6">
+                  {education.map((edu) => (
+                    <div key={edu.id} className="p-6 bg-gray-50 dark:bg-zinc-800/50 rounded-2xl border border-gray-100 dark:border-zinc-800 relative group">
+                      <button
+                        type="button"
+                        onClick={() => removeEducation(edu.id)}
+                        className="absolute top-4 right-4 p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div className="md:col-span-2">
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">School / University</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={edu.school}
+                            onChange={(e) => updateEducation(edu.id, 'school', e.target.value)}
+                            placeholder="e.g. Makerere University"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Degree</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={edu.degree}
+                            onChange={(e) => updateEducation(edu.id, 'degree', e.target.value)}
+                            placeholder="e.g. Bachelor of Science"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Field of Study</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={edu.fieldOfStudy}
+                            onChange={(e) => updateEducation(edu.id, 'fieldOfStudy', e.target.value)}
+                            placeholder="e.g. Computer Science"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Start Date</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={edu.startDate}
+                            onChange={(e) => updateEducation(edu.id, 'startDate', e.target.value)}
+                            placeholder="e.g. 2016"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">End Date (or Expected)</label>
+                          <input
+                            type="text"
+                            className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all dark:text-white"
+                            value={edu.endDate || ''}
+                            onChange={(e) => updateEducation(edu.id, 'endDate', e.target.value)}
+                            placeholder="e.g. 2020"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase mb-1 ml-1">Description (Optional)</label>
+                        <textarea
+                          rows={2}
+                          className="w-full px-4 py-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 transition-all resize-none dark:text-white"
+                          value={edu.description}
+                          onChange={(e) => updateEducation(edu.id, 'description', e.target.value)}
+                          placeholder="Relevant coursework, honors, etc."
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {education.length === 0 && (
+                    <p className="text-center py-8 text-gray-500 dark:text-zinc-500 italic text-sm">No education history added yet.</p>
+                  )}
+                </div>
               </div>
             </div>
 

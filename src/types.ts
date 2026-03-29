@@ -1,5 +1,26 @@
 export type UserRole = 'employer' | 'seeker' | 'admin';
 
+export interface Experience {
+  id: string;
+  company: string;
+  position: string;
+  location: string;
+  startDate: string;
+  endDate?: string;
+  current: boolean;
+  description: string;
+}
+
+export interface Education {
+  id: string;
+  school: string;
+  degree: string;
+  fieldOfStudy: string;
+  startDate: string;
+  endDate?: string;
+  description: string;
+}
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -10,8 +31,9 @@ export interface UserProfile {
   companyId?: string;
   bio?: string;
   skills?: string[];
-  experience?: any[];
-  education?: any[];
+  experience?: Experience[];
+  education?: Education[];
+  savedJobs?: string[];
   createdAt: any;
 }
 
@@ -27,7 +49,9 @@ export interface Job {
   category?: string;
   requirements?: string[];
   featured?: boolean;
+  deadline?: any;
   status: 'pending' | 'active' | 'closed' | 'rejected';
+  viewCount?: number;
   createdAt: any;
 }
 
@@ -60,5 +84,16 @@ export interface JobAlert {
   location: string;
   jobType: string;
   enabled: boolean;
+  createdAt: any;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: 'status_change' | 'new_application' | 'info';
+  read: boolean;
+  link?: string;
   createdAt: any;
 }

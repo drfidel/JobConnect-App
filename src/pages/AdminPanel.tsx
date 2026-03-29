@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, onSnapshot, updateDoc, doc, deleteDoc, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth, useDarkMode } from '../App';
-import { Job, UserProfile, Company } from '../types';
-import { Shield, Users, Briefcase, CheckCircle, XCircle, Trash2, Loader2, Search, Filter, AlertTriangle, ChevronRight, LayoutDashboard, BarChart3, Star, Sun, Moon, TrendingUp } from 'lucide-react';
+import { Job, UserProfile, Company, Application } from '../types';
+import { Shield, Users, Briefcase, CheckCircle, XCircle, Trash2, Loader2, Search, Filter, AlertTriangle, ChevronRight, LayoutDashboard, BarChart3, Star, Sun, Moon, TrendingUp, User } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell, PieChart, Pie } from 'recharts';
+import { jobService } from '../services/jobService';
+import { profileService } from '../services/profileService';
+import { applicationService } from '../services/applicationService';
 
 export default function AdminPanel() {
   const { user, profile } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'jobs' | 'users' | 'analytics'>('jobs');
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,27 +23,31 @@ export default function AdminPanel() {
     if (profile?.role !== 'admin') return;
 
     // Fetch all jobs
-    const jobsRef = collection(db, 'jobs');
-    const unsubscribeJobs = onSnapshot(jobsRef, (snapshot) => {
-      setJobs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Job)));
+    const unsubscribeJobs = jobService.subscribeToAllJobs((jobsData) => {
+      setJobs(jobsData);
     });
 
     // Fetch all users
-    const usersRef = collection(db, 'users');
-    const unsubscribeUsers = onSnapshot(usersRef, (snapshot) => {
-      setUsers(snapshot.docs.map(doc => ({ uid: doc.id, ...doc.data() } as UserProfile)));
+    const unsubscribeUsers = profileService.subscribeToAllProfiles((usersData) => {
+      setUsers(usersData);
+    });
+
+    // Fetch all applications
+    const unsubscribeApps = applicationService.subscribeToAllApplications((appsData) => {
+      setApplications(appsData);
       setLoading(false);
     });
 
     return () => {
       unsubscribeJobs();
       unsubscribeUsers();
+      unsubscribeApps();
     };
   }, [profile]);
 
   const handleUpdateJobStatus = async (jobId: string, status: 'active' | 'rejected' | 'closed') => {
     try {
-      await updateDoc(doc(db, 'jobs', jobId), { status });
+      await jobService.updateJob(jobId, { status });
     } catch (err) {
       console.error("Error updating job status:", err);
     }
@@ -49,7 +55,7 @@ export default function AdminPanel() {
 
   const handleToggleFeatured = async (jobId: string, currentFeatured: boolean) => {
     try {
-      await updateDoc(doc(db, 'jobs', jobId), { featured: !currentFeatured });
+      await jobService.updateJob(jobId, { featured: !currentFeatured });
     } catch (err) {
       console.error("Error toggling featured status:", err);
     }
@@ -58,7 +64,7 @@ export default function AdminPanel() {
   const handleDeleteJob = async (jobId: string) => {
     if (window.confirm("Are you sure you want to delete this job listing? This action cannot be undone.")) {
       try {
-        await deleteDoc(doc(db, 'jobs', jobId));
+        await jobService.deleteJob(jobId);
       } catch (err) {
         console.error("Error deleting job:", err);
       }
@@ -68,7 +74,7 @@ export default function AdminPanel() {
   const handleDeleteUser = async (userId: string) => {
     if (window.confirm("Are you sure you want to delete this user? This action cannot be undone.")) {
       try {
-        await deleteDoc(doc(db, 'users', userId));
+        await profileService.deleteProfile(userId);
       } catch (err) {
         console.error("Error deleting user:", err);
       }
@@ -165,6 +171,7 @@ export default function AdminPanel() {
                     <th className="px-6 py-4">Job Details</th>
                     <th className="px-6 py-4">Employer</th>
                     <th className="px-6 py-4">Status</th>
+                    <th className="px-6 py-4">Views</th>
                     <th className="px-6 py-4">Date</th>
                     <th className="px-6 py-4 text-right">Actions</th>
                   </tr>
@@ -188,6 +195,9 @@ export default function AdminPanel() {
                         }`}>
                           {job.status}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
+                        {job.viewCount || 0}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {formatDistanceToNow(job.createdAt.toDate())} ago
@@ -282,11 +292,14 @@ export default function AdminPanel() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{u.email}</td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
                           u.role === 'admin' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' :
                           u.role === 'employer' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' :
                           'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
                         }`}>
+                          {u.role === 'admin' && <Shield size={10} />}
+                          {u.role === 'employer' && <Briefcase size={10} />}
+                          {u.role === 'seeker' && <User size={10} />}
                           {u.role}
                         </span>
                       </td>
@@ -313,7 +326,7 @@ export default function AdminPanel() {
         {activeTab === 'analytics' && (
           <div className="space-y-8">
             {/* Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
               <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
                 <h4 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mb-4">User Growth</h4>
                 <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">+{users.length}</div>
@@ -322,26 +335,107 @@ export default function AdminPanel() {
                 </p>
               </div>
               <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
-                <h4 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mb-4">Job Postings</h4>
-                <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">{jobs.length}</div>
-                <p className="text-blue-600 dark:text-blue-400 text-sm font-bold flex items-center gap-1">
-                  <TrendingUp size={16} /> 8% this month
+                <h4 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mb-4">Active Listings</h4>
+                <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+                  {jobs.filter(j => j.status === 'active').length}
+                </div>
+                <p className="text-green-600 dark:text-green-400 text-sm font-bold flex items-center gap-1">
+                  <TrendingUp size={16} /> Live on platform
                 </p>
               </div>
               <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
-                <h4 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mb-4">Success Rate</h4>
-                <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">24%</div>
+                <h4 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mb-4">Job Categories</h4>
+                <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+                  {new Set(jobs.map(j => j.category).filter(Boolean)).size}
+                </div>
                 <p className="text-purple-600 dark:text-purple-400 text-sm font-bold flex items-center gap-1">
-                  <TrendingUp size={16} /> 5% this month
+                  <TrendingUp size={16} /> Across all sectors
+                </p>
+              </div>
+              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
+                <h4 className="text-gray-500 dark:text-gray-400 text-sm font-bold uppercase tracking-widest mb-4">Avg Apps / Job</h4>
+                <div className="text-4xl font-extrabold text-gray-900 dark:text-white mb-2">
+                  {jobs.length > 0 ? (applications.length / jobs.length).toFixed(1) : '0'}
+                </div>
+                <p className="text-orange-600 dark:text-orange-400 text-sm font-bold flex items-center gap-1">
+                  <TrendingUp size={16} /> Engagement rate
                 </p>
               </div>
             </div>
 
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Top Jobs & Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Top 5 Most Viewed Jobs */}
+              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Top 5 Most Viewed Jobs</h4>
+                <div className="space-y-4">
+                  {jobs
+                    .sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0))
+                    .slice(0, 5)
+                    .map((job, index) => (
+                      <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs">
+                            {index + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-gray-900 dark:text-white truncate text-sm">{job.title}</div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">{job.category || 'Uncategorized'}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-black text-blue-600 dark:text-blue-400">{job.viewCount || 0}</div>
+                          <div className="text-[10px] text-gray-400 uppercase font-bold">Views</div>
+                        </div>
+                      </div>
+                    ))}
+                  {jobs.length === 0 && (
+                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 italic">
+                      No job data available yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Top 5 Most Applied Jobs */}
+              <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Top 5 Most Applied Jobs</h4>
+                <div className="space-y-4">
+                  {jobs
+                    .map(job => ({
+                      ...job,
+                      appCount: applications.filter(a => a.jobId === job.id).length
+                    }))
+                    .sort((a, b) => b.appCount - a.appCount)
+                    .slice(0, 5)
+                    .map((job, index) => (
+                      <div key={job.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold text-xs">
+                            {index + 1}
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold text-gray-900 dark:text-white truncate text-sm">{job.title}</div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-wider">{job.category || 'Uncategorized'}</div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-black text-blue-600 dark:text-blue-400">{job.appCount}</div>
+                          <div className="text-[10px] text-gray-400 uppercase font-bold">Apps</div>
+                        </div>
+                      </div>
+                    ))}
+                  {jobs.length === 0 && (
+                    <div className="text-center py-10 text-gray-500 dark:text-gray-400 italic">
+                      No job data available yet.
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* User Distribution */}
               <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6">User Distribution by Role</h4>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6">User Distribution</h4>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={[
@@ -368,7 +462,7 @@ export default function AdminPanel() {
 
               {/* Job Status Distribution */}
               <div className="bg-white dark:bg-gray-900 p-8 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm transition-colors duration-300">
-                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Job Listings by Status</h4>
+                <h4 className="text-lg font-bold text-gray-900 dark:text-white mb-6">Job Listings Status</h4>
                 <div className="h-[300px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -418,6 +512,73 @@ export default function AdminPanel() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+
+            {/* Full Job Performance Table */}
+            <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden transition-colors duration-300">
+              <div className="p-6 border-b border-gray-50 dark:border-gray-700">
+                <h4 className="text-xl font-bold text-gray-900 dark:text-white">Full Job Performance Report</h4>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead className="bg-gray-50 dark:bg-gray-800 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-4">Job Title</th>
+                      <th className="px-6 py-4">Category</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-center">Views</th>
+                      <th className="px-6 py-4 text-center">Applications</th>
+                      <th className="px-6 py-4 text-center">Conv. Rate</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                    {jobs.sort((a, b) => (b.viewCount || 0) - (a.viewCount || 0)).map(job => {
+                      const appCount = applications.filter(a => a.jobId === job.id).length;
+                      const convRate = job.viewCount && job.viewCount > 0 
+                        ? ((appCount / job.viewCount) * 100).toFixed(1) 
+                        : '0.0';
+                      
+                      return (
+                        <tr key={job.id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                          <td className="px-6 py-4">
+                            <div className="font-bold text-gray-900 dark:text-white">{job.title}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{job.location}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                            {job.category || 'Uncategorized'}
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              job.status === 'active' ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400' :
+                              job.status === 'pending' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 dark:text-yellow-400' :
+                              'bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                            }`}>
+                              {job.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-center font-bold text-gray-900 dark:text-white">
+                            {job.viewCount || 0}
+                          </td>
+                          <td className="px-6 py-4 text-center font-bold text-gray-900 dark:text-white">
+                            {appCount}
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <div className="flex flex-col items-center">
+                              <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{convRate}%</span>
+                              <div className="w-16 h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full mt-1 overflow-hidden">
+                                <div 
+                                  className="h-full bg-blue-500" 
+                                  style={{ width: `${Math.min(parseFloat(convRate), 100)}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>

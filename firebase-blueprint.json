@@ -15,6 +15,7 @@
         "skills": { "type": "array", "items": { "type": "string" } },
         "experience": { "type": "array", "items": { "type": "object" } },
         "education": { "type": "array", "items": { "type": "object" } },
+        "savedJobs": { "type": "array", "items": { "type": "string" } },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["uid", "email", "role"]
@@ -33,6 +34,7 @@
         "location": { "type": "string" },
         "jobType": { "type": "string", "enum": ["full-time", "part-time", "internship", "contract"] },
         "category": { "type": "string" },
+        "deadline": { "type": "string", "format": "date-time" },
         "requirements": { "type": "array", "items": { "type": "string" } },
         "status": { "type": "string", "enum": ["pending", "active", "closed", "rejected"] },
         "createdAt": { "type": "string", "format": "date-time" }
@@ -70,6 +72,37 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["ownerId", "name", "location"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "In-app notification for users",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["status_change", "new_application", "info"] },
+        "read": { "type": "boolean" },
+        "link": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "type", "read"]
+    },
+    "JobAlert": {
+      "title": "JobAlert",
+      "description": "Job alert preferences for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "keywords": { "type": "string" },
+        "location": { "type": "string" },
+        "jobType": { "type": "string" },
+        "enabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "keywords", "enabled"]
     }
   },
   "firestore": {
@@ -88,6 +121,14 @@
     "/companies/{companyId}": {
       "schema": "Company",
       "description": "Company profiles"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "In-app notifications"
+    },
+    "/job_alerts/{alertId}": {
+      "schema": "JobAlert",
+      "description": "Job alerts"
     }
   }
 }

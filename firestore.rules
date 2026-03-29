@@ -31,6 +31,7 @@ service cloud.firestore {
     //   - location: string (required)
     //   - jobType: string (required, ['full-time', 'part-time', 'internship', 'contract'])
     //   - category: string
+    //   - deadline: timestamp
     //   - requirements: list
     //   - status: string (required, ['pending', 'active', 'closed', 'rejected'])
     //   - createdAt: timestamp
@@ -107,7 +108,8 @@ service cloud.firestore {
              data.email == request.auth.token.email &&
              data.role in ['employer', 'seeker', 'admin'] &&
              (data.displayName == null || (data.displayName is string && data.displayName.size() < 100)) &&
-             (data.bio == null || (data.bio is string && data.bio.size() < 1000));
+             (data.bio == null || (data.bio is string && data.bio.size() < 1000)) &&
+             (data.savedJobs == null || (data.savedJobs is list));
     }
 
     function isValidJob(data) {
@@ -116,7 +118,9 @@ service cloud.firestore {
              data.jobType in ['full-time', 'part-time', 'internship', 'contract'] &&
              data.status in ['pending', 'active', 'closed', 'rejected'] &&
              data.title is string && data.title.size() < 200 &&
-             data.description is string && data.description.size() < 5000;
+             data.description is string && data.description.size() < 5000 &&
+             (data.category == null || (data.category is string && data.category.size() < 100)) &&
+             (data.deadline == null || (data.deadline is timestamp));
     }
 
     function isValidApplication(data) {
@@ -131,6 +135,22 @@ service cloud.firestore {
              data.ownerId == request.auth.uid &&
              data.name is string && data.name.size() < 200 &&
              data.location is string && data.location.size() < 200;
+    }
+
+    function isValidNotification(data) {
+      return hasRequiredFields(['userId', 'title', 'message', 'type', 'read']) &&
+             data.userId is string &&
+             data.title is string && data.title.size() < 200 &&
+             data.message is string && data.message.size() < 1000 &&
+             data.type in ['status_change', 'new_application', 'info'] &&
+             data.read is bool;
+    }
+
+    function isValidJobAlert(data) {
+      return hasRequiredFields(['userId', 'keywords', 'enabled']) &&
+             data.userId == request.auth.uid &&
+             data.keywords is string && data.keywords.size() < 200 &&
+             data.enabled is bool;
     }
 
     // ===============================================================
@@ -162,6 +182,20 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isEmployer() && isValidCompany(request.resource.data);
       allow update: if isAuthenticated() && (isOwner(resource.data.ownerId) || isAdmin()) && isValidCompany(request.resource.data);
       allow delete: if isAuthenticated() && (isOwner(resource.data.ownerId) || isAdmin());
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidNotification(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /job_alerts/{alertId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow create: if isAuthenticated() && isSeeker() && isValidJobAlert(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidJobAlert(request.resource.data);
+      allow delete: if isAuthenticated() && isOwner(resource.data.userId);
     }
 
     match /{path=**} {

@@ -2,8 +2,8 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Briefcase, User, LogOut, Menu, X, Shield, Sun, Moon } from 'lucide-react';
 import { useAuth, useDarkMode } from '../App';
-import { auth } from '../firebase';
-import { signOut } from 'firebase/auth';
+import { authService } from '../services/authService';
+import NotificationCenter from './NotificationCenter';
 
 export default function Navbar() {
   const { user, profile } = useAuth();
@@ -12,8 +12,12 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    navigate('/login');
+    try {
+      await authService.logout();
+      navigate('/login');
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -24,7 +28,7 @@ export default function Navbar() {
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white">
               <Briefcase size={24} />
             </div>
-            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">JobConnect <span className="text-blue-600">Uganda</span></span>
+            <span className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">UMA <span className="text-blue-600">Job Portal</span></span>
           </Link>
 
           {/* Desktop Menu */}
@@ -39,6 +43,7 @@ export default function Navbar() {
                   </Link>
                 )}
                 <div className="flex items-center space-x-4 border-l pl-8 border-gray-100 dark:border-gray-800">
+                  <NotificationCenter />
                   <button
                     onClick={toggleDarkMode}
                     className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -83,6 +88,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
+            {user && <NotificationCenter />}
             <button
               onClick={toggleDarkMode}
               className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"

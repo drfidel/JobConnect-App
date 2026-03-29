@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from '../App';
 import { Job, Company, Application } from '../types';
-import { MapPin, Briefcase, DollarSign, Clock, Calendar, ChevronLeft, Building2, Share2, Bookmark, Loader2, CheckCircle2, AlertCircle, FileText, Send, Star } from 'lucide-react';
+import { MapPin, Briefcase, DollarSign, Clock, Calendar, ChevronLeft, Building2, Share2, Bookmark, Loader2, CheckCircle2, AlertCircle, FileText, Send, Star, XCircle } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
+import { jobService } from '../services/jobService';
+import { companyService } from '../services/companyService';
+import { applicationService } from '../services/applicationService';
+import { notificationService } from '../services/notificationService';
+import { profileService } from '../services/profileService';
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
@@ -21,28 +24,45 @@ export default function JobDetails() {
   const [coverLetter, setCoverLetter] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [isSaved, setIsSaved] = useState(false);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    if (job?.deadline) {
+      const deadlineDate = job.deadline.toDate ? job.deadline.toDate() : new Date(job.deadline);
+      setIsExpired(deadlineDate < new Date());
+    } else {
+      setIsExpired(false);
+    }
+  }, [job]);
+
+  useEffect(() => {
+    if (profile?.savedJobs && id) {
+      setIsSaved(profile.savedJobs.includes(id));
+    }
+  }, [profile?.savedJobs, id]);
 
   useEffect(() => {
     const fetchJob = async () => {
       if (!id) return;
       try {
-        const jobSnap = await getDoc(doc(db, 'jobs', id));
-        if (jobSnap.exists()) {
-          const jobData = { id: jobSnap.id, ...jobSnap.data() } as Job;
+        const jobData = await jobService.getJobById(id);
+        if (jobData) {
           setJob(jobData);
           
+          // Increment view count
+          await jobService.incrementViewCount(id);
+          
           // Fetch company
-          const companySnap = await getDoc(doc(db, 'companies', jobData.companyId));
-          if (companySnap.exists()) {
-            setCompany({ id: companySnap.id, ...companySnap.data() } as Company);
+          const companyData = await companyService.getCompanyById(jobData.companyId);
+          if (companyData) {
+            setCompany(companyData);
           }
 
           // Check if user has already applied
           if (user) {
-            const appsRef = collection(db, 'applications');
-            const q = query(appsRef, where('jobId', '==', id), where('seekerId', '==', user.uid));
-            const appsSnap = await getDocs(q);
-            setHasApplied(!appsSnap.empty);
+            const hasUserApplied = await applicationService.hasUserApplied(user.uid, id);
+            setHasApplied(hasUserApplied);
           }
         } else {
           navigate('/');
@@ -68,21 +88,50 @@ export default function JobDetails() {
     setSubmitting(true);
     setError('');
     try {
-      await addDoc(collection(db, 'applications'), {
+      await applicationService.createApplication({
         jobId: job.id,
         seekerId: user.uid,
         employerId: job.employerId,
         status: 'applied',
         coverLetter,
-        createdAt: serverTimestamp(),
         resumeURL: profile.photoURL || '' // Simplified for demo
       });
+
+      // Notify Employer
+      await notificationService.createNotification({
+        userId: job.employerId,
+        title: 'New Application',
+        message: `${profile?.displayName || 'A seeker'} applied for your job: ${job.title}`,
+        type: 'new_application',
+        link: '/employer-dashboard'
+      });
+
       setHasApplied(true);
       setIsApplying(false);
     } catch (err: any) {
       setError(err.message || 'Failed to submit application. Please try again.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleToggleSave = async () => {
+    if (!user || !id) return;
+    if (profile?.role !== 'seeker') {
+      setError('Only job seekers can save jobs.');
+      return;
+    }
+
+    try {
+      if (isSaved) {
+        await profileService.removeSavedJob(user.uid, id);
+        setIsSaved(false);
+      } else {
+        await profileService.addSavedJob(user.uid, id);
+        setIsSaved(true);
+      }
+    } catch (err) {
+      console.error("Error toggling save job:", err);
     }
   };
 
@@ -119,12 +168,23 @@ export default function JobDetails() {
                 <div>
                   <div className="flex items-center gap-2 mb-2">
                     {job.featured && (
-                      <span className="px-2.5 py-0.5 bg-yellow-50 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-yellow-100 dark:border-yellow-900/50 shadow-sm">
-                        <Star size={10} fill="currentColor" /> Featured Role
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-widest shadow-md animate-pulse border border-yellow-300/50">
+                        <Star size={12} fill="currentColor" /> Featured Role
                       </span>
                     )}
                   </div>
                   <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">{job.title}</h1>
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                    {job.status === 'closed' || isExpired ? (
+                      <span className="px-2.5 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-red-100 dark:border-red-900/50 shadow-sm">
+                        <XCircle size={10} fill="currentColor" /> Closed
+                      </span>
+                    ) : (
+                      <span className="px-2.5 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-green-100 dark:border-green-900/50 shadow-sm">
+                        <CheckCircle2 size={10} fill="currentColor" /> Active
+                      </span>
+                    )}
+                  </div>
                   <div className="flex flex-wrap items-center gap-4 text-gray-600 dark:text-zinc-400 font-medium">
                     <Link to={`/company/${job.companyId}`} className="text-blue-600 dark:text-blue-400 hover:underline">{company?.name || 'Unknown Company'}</Link>
                     <span className="text-gray-300 dark:text-zinc-700">•</span>
@@ -136,8 +196,16 @@ export default function JobDetails() {
                 <button className="p-3 text-gray-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all border border-gray-100 dark:border-zinc-800">
                   <Share2 size={20} />
                 </button>
-                <button className="p-3 text-gray-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all border border-gray-100 dark:border-zinc-800">
-                  <Bookmark size={20} />
+                <button 
+                  onClick={handleToggleSave}
+                  className={`p-3 rounded-xl transition-all border ${
+                    isSaved 
+                      ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' 
+                      : 'text-gray-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-gray-100 dark:border-zinc-800'
+                  }`}
+                  title={isSaved ? "Remove from saved" : "Save job"}
+                >
+                  <Bookmark size={20} fill={isSaved ? "currentColor" : "none"} />
                 </button>
               </div>
             </div>
@@ -159,14 +227,34 @@ export default function JobDetails() {
                 <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Posted</span>
                 <p className="text-gray-900 dark:text-white font-bold flex items-center gap-1.5"><Calendar size={16} className="text-blue-600 dark:text-blue-400" /> {formatDistanceToNow(job.createdAt.toDate())} ago</p>
               </div>
+              {job.deadline && (
+                <div className="space-y-1">
+                  <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Deadline</span>
+                  <p className="text-orange-600 dark:text-orange-400 font-bold flex items-center gap-1.5">
+                    <Calendar size={16} /> 
+                    {job.deadline.toDate ? job.deadline.toDate().toLocaleDateString() : new Date(job.deadline).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="prose prose-blue dark:prose-invert max-w-none">
+            <div className="prose prose-blue dark:prose-invert max-w-none mb-8">
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Job Description</h3>
               <div className="text-gray-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
                 <ReactMarkdown>{job.description}</ReactMarkdown>
               </div>
             </div>
+
+            {job.requirements && job.requirements.length > 0 && (
+              <div className="prose prose-blue dark:prose-invert max-w-none">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Job Requirements</h3>
+                <ul className="list-disc pl-5 space-y-2 text-gray-700 dark:text-zinc-300">
+                  {job.requirements.map((req, index) => (
+                    <li key={index}>{req}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </div>
 
@@ -183,6 +271,14 @@ export default function JobDetails() {
                 <h4 className="font-bold text-green-900 dark:text-green-100 mb-1">Application Sent!</h4>
                 <p className="text-sm text-green-700 dark:text-green-300 mb-4">You have already applied for this position. Track your status in the dashboard.</p>
                 <Link to="/dashboard" className="text-green-700 dark:text-green-400 font-bold text-sm hover:underline">Go to Dashboard</Link>
+              </div>
+            ) : job.status === 'closed' || isExpired ? (
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-2xl p-6 text-center">
+                <div className="w-12 h-12 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center text-red-600 dark:text-red-400 mx-auto mb-4">
+                  <XCircle size={24} />
+                </div>
+                <h4 className="font-bold text-red-900 dark:text-red-100 mb-1">Job Closed</h4>
+                <p className="text-sm text-red-700 dark:text-red-300">This position is no longer accepting applications.</p>
               </div>
             ) : profile?.role === 'employer' ? (
               <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl p-6 text-center">
