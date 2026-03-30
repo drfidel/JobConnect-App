@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Job, Company } from '../types';
-import { Search, MapPin, Briefcase, DollarSign, Filter, ChevronRight, Loader2, Star, TrendingUp, Laptop, Heart, ShoppingBag, Truck, Utensils, Construction, GraduationCap, Calendar, Send, Building2, Clock } from 'lucide-react';
+import { Search, MapPin, Briefcase, DollarSign, Filter, ChevronRight, Loader2, Star, TrendingUp, Laptop, Heart, ShoppingBag, Truck, Utensils, Construction, GraduationCap, Calendar, Send, Building2, Clock, CheckCircle2, AlertCircle, XCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -9,6 +9,7 @@ import QuickApplyModal from '../components/QuickApplyModal';
 import { CATEGORIES } from '../constants';
 import { jobService } from '../services/jobService';
 import { companyService } from '../services/companyService';
+import { getJobDeadlineStatus } from '../lib/jobUtils';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -168,7 +169,7 @@ export default function Home() {
 
       {/* Featured Jobs */}
       {featuredJobs.length > 0 && (
-        <section className="relative py-12 px-8 rounded-[2.5rem] bg-gradient-to-br from-blue-600 to-indigo-700 dark:from-blue-900/40 dark:to-indigo-900/40 overflow-hidden shadow-2xl">
+        <section className="relative py-12 px-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-slate-950 overflow-hidden shadow-2xl">
           {/* Decorative background patterns */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
           <div className="absolute bottom-0 left-0 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
@@ -204,7 +205,7 @@ export default function Home() {
                 >
                   <Link 
                     to={`/jobs/${job.id}`}
-                    className="block h-full bg-slate-950/40 hover:bg-slate-950/60 backdrop-blur-2xl p-10 rounded-[3rem] border border-white/10 hover:border-white/30 shadow-2xl hover:shadow-blue-500/30 transition-all group relative overflow-hidden flex flex-col"
+                    className="block h-full bg-black/40 hover:bg-black/60 backdrop-blur-2xl p-10 rounded-[3rem] border border-white/10 hover:border-white/30 shadow-2xl hover:shadow-blue-500/30 transition-all group relative overflow-hidden flex flex-col"
                   >
                     {/* Premium Shine Effect */}
                     <div className="absolute -inset-full bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -rotate-45 translate-x-[-100%] group-hover:translate-x-[200%] pointer-events-none"></div>
@@ -218,9 +219,22 @@ export default function Home() {
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-3">
-                        <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.25em] shadow-xl shadow-orange-500/30 animate-pulse">
-                          <Star size={12} fill="currentColor" /> Featured
-                        </span>
+                        <div className="flex flex-wrap justify-end gap-2">
+                          {job.featured && (
+                            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.25em] shadow-xl shadow-orange-500/30 animate-pulse">
+                              <Star size={12} fill="currentColor" /> Featured
+                            </span>
+                          )}
+                          {getJobDeadlineStatus(job) === 'expired' ? (
+                            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-red-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.25em] shadow-xl shadow-red-500/30">
+                              <XCircle size={12} fill="currentColor" /> Expired
+                            </span>
+                          ) : getJobDeadlineStatus(job) === 'nearing' && (
+                            <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.25em] shadow-xl shadow-orange-500/30 animate-bounce">
+                              <AlertCircle size={12} fill="currentColor" /> Closing Soon
+                            </span>
+                          )}
+                        </div>
                         <span className="px-4 py-1.5 bg-white/10 text-white text-[10px] font-black rounded-xl uppercase tracking-widest border border-white/10 backdrop-blur-md">
                           {job.jobType.replace('-', ' ')}
                         </span>
@@ -446,7 +460,7 @@ export default function Home() {
                       onClick={() => navigate(`/jobs/${job.id}`)}
                       className={`block group rounded-[2.5rem] p-8 border transition-all duration-500 cursor-pointer relative overflow-hidden ${
                         job.featured 
-                          ? 'bg-gradient-to-br from-slate-900/5 to-white dark:from-slate-900/40 dark:to-gray-900 border-slate-200 dark:border-slate-800 shadow-xl hover:shadow-2xl hover:border-slate-400 dark:hover:border-slate-600 ring-1 ring-slate-100 dark:ring-slate-900/30' 
+                          ? 'bg-slate-900 dark:bg-black border-slate-800 shadow-xl hover:shadow-2xl hover:border-slate-600 ring-1 ring-slate-800/50' 
                           : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl hover:border-blue-200 dark:hover:border-blue-900/50'
                       }`}
                     >
@@ -478,13 +492,26 @@ export default function Home() {
                             }`}>
                               {job.jobType.replace('-', ' ')}
                             </span>
-                            <span className="inline-flex items-center gap-1.5 text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">
+                            {getJobDeadlineStatus(job) === 'expired' ? (
+                              <span className="px-4 py-1.5 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-black rounded-xl uppercase tracking-[0.15em] border border-red-200 dark:border-red-800/50">
+                                Expired
+                              </span>
+                            ) : getJobDeadlineStatus(job) === 'nearing' && (
+                              <span className="px-4 py-1.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-black rounded-xl uppercase tracking-[0.15em] border border-orange-200 dark:border-orange-800/50 animate-pulse">
+                                Closing Soon
+                              </span>
+                            )}
+                            <span className={`inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${job.featured ? 'text-slate-400' : 'text-gray-400 dark:text-gray-500'}`}>
                               <Clock size={12} />
                               {formatDistanceToNow(job.createdAt.toDate())} ago
                             </span>
                           </div>
                           
-                          <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center flex-wrap gap-3 leading-tight">
+                          <h3 className={`text-2xl md:text-3xl font-black mb-2 transition-colors flex items-center flex-wrap gap-3 leading-tight ${
+                            job.featured 
+                              ? 'text-white group-hover:text-blue-300' 
+                              : 'text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400'
+                          }`}>
                             {job.title}
                             {job.featured && (
                               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20">
@@ -499,7 +526,11 @@ export default function Home() {
                             </div>
                             <Link 
                               to={`/company/${job.companyId}`} 
-                              className="text-gray-600 dark:text-gray-400 font-bold hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                              className={`font-bold transition-colors ${
+                                job.featured 
+                                  ? 'text-slate-300 hover:text-white' 
+                                  : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
+                              }`}
                               onClick={(e) => e.stopPropagation()}
                             >
                               {companies[job.companyId]?.name || 'Unknown Company'}
@@ -512,8 +543,8 @@ export default function Home() {
                                 <MapPin size={18} className="text-blue-600 dark:text-blue-400" />
                               </div>
                               <div className="space-y-0.5">
-                                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-widest">Location</p>
-                                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{job.location}</p>
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${job.featured ? 'text-slate-500' : 'text-gray-400 dark:text-gray-500'}`}>Location</p>
+                                <p className={`text-sm font-bold ${job.featured ? 'text-slate-200' : 'text-gray-700 dark:text-gray-300'}`}>{job.location}</p>
                               </div>
                             </div>
 
@@ -522,8 +553,8 @@ export default function Home() {
                                 <DollarSign size={18} className="text-green-600 dark:text-green-400" />
                               </div>
                               <div className="space-y-0.5">
-                                <p className="text-[10px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-widest">Salary</p>
-                                <p className="text-sm font-bold text-gray-700 dark:text-gray-300">{job.salaryRange || 'Negotiable'}</p>
+                                <p className={`text-[10px] font-black uppercase tracking-widest ${job.featured ? 'text-slate-500' : 'text-gray-400 dark:text-gray-500'}`}>Salary</p>
+                                <p className={`text-sm font-bold ${job.featured ? 'text-slate-200' : 'text-gray-700 dark:text-gray-300'}`}>{job.salaryRange || 'Negotiable'}</p>
                               </div>
                             </div>
 
@@ -533,8 +564,8 @@ export default function Home() {
                                   <Calendar size={18} className="text-orange-600 dark:text-orange-400" />
                                 </div>
                                 <div className="space-y-0.5">
-                                  <p className="text-[10px] text-gray-400 dark:text-gray-500 font-black uppercase tracking-widest">Deadline</p>
-                                  <p className="text-sm font-bold text-orange-600 dark:text-orange-400">
+                                  <p className={`text-[10px] font-black uppercase tracking-widest ${job.featured ? 'text-slate-500' : 'text-gray-400 dark:text-gray-500'}`}>Deadline</p>
+                                  <p className={`text-sm font-bold ${job.featured ? 'text-orange-400' : 'text-orange-600 dark:text-orange-400'}`}>
                                     {job.deadline.toDate ? job.deadline.toDate().toLocaleDateString() : new Date(job.deadline).toLocaleDateString()}
                                   </p>
                                 </div>

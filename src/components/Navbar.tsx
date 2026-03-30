@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, User, LogOut, Menu, X, Shield, Sun, Moon } from 'lucide-react';
+import { Briefcase, User, LogOut, Menu, X, Shield, Sun, Moon, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
 import { useAuth, useDarkMode } from '../App';
 import { authService } from '../services/authService';
 import NotificationCenter from './NotificationCenter';
@@ -9,7 +9,19 @@ export default function Navbar() {
   const { user, profile } = useAuth();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const navigate = useNavigate();
-  const [isOpen, setIsOpen] = React.useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -51,23 +63,70 @@ export default function Navbar() {
                   >
                     {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                   </button>
-                  <Link to="/profile" className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                    {profile?.photoURL ? (
-                      <img src={profile.photoURL} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
-                        <User size={18} />
+                  
+                  {/* User Dropdown */}
+                  <div className="relative" ref={dropdownRef}>
+                    <button
+                      onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                      className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400 transition-colors focus:outline-none"
+                    >
+                      {profile?.photoURL ? (
+                        <img src={profile.photoURL} alt="Profile" className="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-700" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                          <User size={18} />
+                        </div>
+                      )}
+                      <span className="font-medium hidden lg:inline-block">{profile?.displayName || 'User'}</span>
+                      <ChevronDown size={14} className={`transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {isDropdownOpen && (
+                      <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-100 dark:border-gray-700 py-2 z-50 animate-in fade-in zoom-in duration-150">
+                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700 mb-1">
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{profile?.displayName || 'User'}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user?.email}</p>
+                        </div>
+                        
+                        <Link 
+                          to="/profile" 
+                          className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <User size={16} />
+                          <span>View Profile</span>
+                        </Link>
+                        
+                        <Link 
+                          to="/dashboard" 
+                          className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <LayoutDashboard size={16} />
+                          <span>Dashboard</span>
+                        </Link>
+
+                        <Link 
+                          to="/profile" 
+                          className="flex items-center space-x-2 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                          onClick={() => setIsDropdownOpen(false)}
+                        >
+                          <Settings size={16} />
+                          <span>Settings</span>
+                        </Link>
+
+                        <div className="border-t border-gray-100 dark:border-gray-700 mt-1 pt-1">
+                          <button 
+                            onClick={() => { handleLogout(); setIsDropdownOpen(false); }}
+                            className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors"
+                          >
+                            <LogOut size={16} />
+                            <span>Logout</span>
+                          </button>
+                        </div>
                       </div>
                     )}
-                    <span className="font-medium">{profile?.displayName || 'User'}</span>
-                  </Link>
-                  <button 
-                    onClick={handleLogout}
-                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                    title="Logout"
-                  >
-                    <LogOut size={20} />
-                  </button>
+                  </div>
                 </div>
               </>
             ) : (
@@ -104,19 +163,36 @@ export default function Navbar() {
         {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden py-4 border-t border-gray-50 dark:border-gray-800 space-y-4 animate-in slide-in-from-top duration-200">
-            <Link to="/" className="block text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>Find Jobs</Link>
+            <Link to="/" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+              <Briefcase size={18} />
+              <span>Find Jobs</span>
+            </Link>
             {user ? (
               <>
-                <Link to="/dashboard" className="block text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>Dashboard</Link>
+                <Link to="/dashboard" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                  <LayoutDashboard size={18} />
+                  <span>Dashboard</span>
+                </Link>
                 {profile?.role === 'admin' && (
-                  <Link to="/admin" className="block text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>Admin Panel</Link>
+                  <Link to="/admin" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                    <Shield size={18} />
+                    <span>Admin Panel</span>
+                  </Link>
                 )}
-                <Link to="/profile" className="block text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>Profile</Link>
+                <Link to="/profile" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                  <User size={18} />
+                  <span>Profile</span>
+                </Link>
+                <Link to="/profile" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                  <Settings size={18} />
+                  <span>Settings</span>
+                </Link>
                 <button 
                   onClick={() => { handleLogout(); setIsOpen(false); }}
-                  className="block w-full text-left text-red-500 font-medium px-2"
+                  className="flex items-center space-x-2 w-full text-left text-red-500 font-medium px-2"
                 >
-                  Logout
+                  <LogOut size={18} />
+                  <span>Logout</span>
                 </button>
               </>
             ) : (

@@ -11,6 +11,7 @@ import { companyService } from '../services/companyService';
 import { applicationService } from '../services/applicationService';
 import { notificationService } from '../services/notificationService';
 import { profileService } from '../services/profileService';
+import { getJobDeadlineStatus } from '../lib/jobUtils';
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
@@ -28,9 +29,8 @@ export default function JobDetails() {
   const [isExpired, setIsExpired] = useState(false);
 
   useEffect(() => {
-    if (job?.deadline) {
-      const deadlineDate = job.deadline.toDate ? job.deadline.toDate() : new Date(job.deadline);
-      setIsExpired(deadlineDate < new Date());
+    if (job) {
+      setIsExpired(getJobDeadlineStatus(job) === 'expired');
     } else {
       setIsExpired(false);
     }
@@ -152,12 +152,12 @@ export default function JobDetails() {
         <ChevronLeft size={20} /> Back to Job Search
       </Link>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
         {/* Main Content */}
-        <div className="lg:col-span-2 space-y-8">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 md:p-10 shadow-sm border border-gray-100 dark:border-zinc-800">
+        <div className="lg:col-span-2 space-y-6 md:space-y-8">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-10 shadow-sm border border-gray-100 dark:border-zinc-800">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col md:flex-row items-center md:items-start gap-6 text-center md:text-left">
                 <div className="w-20 h-20 bg-gray-50 dark:bg-zinc-800 rounded-2xl border border-gray-100 dark:border-zinc-700 flex items-center justify-center overflow-hidden shrink-0">
                   {company?.logoURL ? (
                     <img src={company.logoURL} alt="Logo" className="w-full h-full object-cover" />
@@ -165,7 +165,7 @@ export default function JobDetails() {
                     <Building2 className="text-gray-300 dark:text-zinc-600" size={40} />
                   )}
                 </div>
-                <div>
+                <div className="flex flex-col items-center md:items-start">
                   <div className="flex items-center gap-2 mb-2">
                     {job.featured && (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-widest shadow-md animate-pulse border border-yellow-300/50">
@@ -173,11 +173,15 @@ export default function JobDetails() {
                       </span>
                     )}
                   </div>
-                  <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">{job.title}</h1>
-                  <div className="flex flex-wrap items-center gap-2 mb-2">
+                  <h1 className="text-2xl md:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-2">{job.title}</h1>
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-2">
                     {job.status === 'closed' || isExpired ? (
                       <span className="px-2.5 py-0.5 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-red-100 dark:border-red-900/50 shadow-sm">
                         <XCircle size={10} fill="currentColor" /> Closed
+                      </span>
+                    ) : getJobDeadlineStatus(job) === 'nearing' ? (
+                      <span className="px-2.5 py-0.5 bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-orange-100 dark:border-orange-900/50 shadow-sm animate-pulse">
+                        <AlertCircle size={10} fill="currentColor" /> Closing Soon
                       </span>
                     ) : (
                       <span className="px-2.5 py-0.5 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 text-[10px] font-black rounded-full uppercase tracking-widest flex items-center gap-1 border border-green-100 dark:border-green-900/50 shadow-sm">
@@ -185,14 +189,14 @@ export default function JobDetails() {
                       </span>
                     )}
                   </div>
-                  <div className="flex flex-wrap items-center gap-4 text-gray-600 dark:text-zinc-400 font-medium">
+                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 md:gap-4 text-gray-600 dark:text-zinc-400 font-medium text-sm md:text-base">
                     <Link to={`/company/${job.companyId}`} className="text-blue-600 dark:text-blue-400 hover:underline">{company?.name || 'Unknown Company'}</Link>
-                    <span className="text-gray-300 dark:text-zinc-700">•</span>
+                    <span className="text-gray-300 dark:text-zinc-700 hidden md:inline">•</span>
                     <span className="flex items-center gap-1.5"><MapPin size={18} className="text-gray-400 dark:text-zinc-500" /> {job.location}</span>
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center md:justify-end gap-2">
                 <button className="p-3 text-gray-400 dark:text-zinc-500 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition-all border border-gray-100 dark:border-zinc-800">
                   <Share2 size={20} />
                 </button>
@@ -260,7 +264,7 @@ export default function JobDetails() {
 
         {/* Sidebar Actions */}
         <aside className="lg:col-span-1 space-y-6">
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-8 shadow-sm border border-gray-100 dark:border-zinc-800 sticky top-24">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 dark:border-zinc-800 lg:sticky lg:top-24">
             <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Interested in this role?</h3>
             
             {hasApplied ? (
@@ -328,15 +332,15 @@ export default function JobDetails() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-2xl bg-white dark:bg-zinc-900 rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[95vh] md:max-h-none flex flex-col mt-auto md:mt-0"
             >
-              <div className="p-8 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Apply for {job.title}</h2>
+              <div className="p-6 md:p-8 border-b border-gray-100 dark:border-zinc-800 flex justify-between items-center shrink-0">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-white">Apply for {job.title}</h2>
                 <button onClick={() => setIsApplying(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-zinc-300">
                   <AlertCircle size={24} />
                 </button>
               </div>
-              <form onSubmit={handleApply} className="p-8 space-y-6">
+              <form onSubmit={handleApply} className="p-6 md:p-8 space-y-6 overflow-y-auto custom-scrollbar">
                 {error && (
                   <div className="bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 p-4 rounded-xl flex items-start gap-3">
                     <AlertCircle className="text-red-500 mt-0.5 shrink-0" size={18} />
@@ -346,20 +350,20 @@ export default function JobDetails() {
 
                 <div className="space-y-4">
                   <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-2xl flex items-center gap-4 border border-blue-100 dark:border-blue-900/30">
-                    <div className="w-12 h-12 bg-white dark:bg-zinc-800 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm">
-                      <FileText size={24} />
+                    <div className="w-10 h-10 md:w-12 md:h-12 bg-white dark:bg-zinc-800 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-sm shrink-0">
+                      <FileText size={20} />
                     </div>
                     <div>
-                      <h4 className="font-bold text-blue-900 dark:text-blue-100 text-sm">Your Profile & CV</h4>
-                      <p className="text-xs text-blue-700 dark:text-blue-300">We'll share your professional profile and contact info with {company?.name}.</p>
+                      <h4 className="font-bold text-blue-900 dark:text-blue-100 text-xs md:text-sm">Your Profile & CV</h4>
+                      <p className="text-[10px] md:text-xs text-blue-700 dark:text-blue-300">We'll share your professional profile and contact info with {company?.name}.</p>
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 dark:text-zinc-300 mb-2">Cover Letter (Optional)</label>
                     <textarea 
-                      rows={8}
-                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-zinc-700 transition-all resize-none text-gray-900 dark:text-white"
+                      rows={6}
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-zinc-700 transition-all resize-none text-gray-900 dark:text-white text-sm"
                       placeholder="Explain why you're a great fit for this role..."
                       value={coverLetter}
                       onChange={(e) => setCoverLetter(e.target.value)}
@@ -367,18 +371,18 @@ export default function JobDetails() {
                   </div>
                 </div>
 
-                <div className="pt-6 flex gap-4">
+                <div className="pt-4 md:pt-6 flex flex-col sm:flex-row gap-3 md:gap-4">
                   <button 
                     type="button"
                     onClick={() => setIsApplying(false)}
-                    className="flex-grow py-4 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition-all"
+                    className="flex-grow py-3 md:py-4 bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 font-bold rounded-xl hover:bg-gray-200 dark:hover:bg-zinc-700 transition-all text-sm md:text-base"
                   >
                     Cancel
                   </button>
                   <button 
                     type="submit"
                     disabled={submitting}
-                    className="flex-grow py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                    className="flex-grow py-3 md:py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70 text-sm md:text-base"
                   >
                     {submitting ? <Loader2 className="animate-spin" size={20} /> : <><Send size={18} /> Submit Application</>}
                   </button>

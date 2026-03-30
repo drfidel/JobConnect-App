@@ -66,17 +66,17 @@ export default function QuickApplyModal({ job, company, onClose, onSuccess }: Qu
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden"
+        className="bg-white dark:bg-zinc-900 w-full max-w-lg rounded-t-[2.5rem] md:rounded-[2.5rem] shadow-2xl border border-gray-100 dark:border-zinc-800 overflow-hidden mt-auto md:mt-0"
       >
-        <div className="p-8">
-          <div className="flex justify-between items-start mb-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30">
-                <FileText className="text-blue-600 dark:text-blue-400" size={24} />
+        <div className="p-6 md:p-8">
+          <div className="flex justify-between items-start mb-6 md:mb-8">
+            <div className="flex items-center gap-3 md:gap-4">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl md:rounded-2xl flex items-center justify-center border border-blue-100 dark:border-blue-900/30">
+                <FileText className="text-blue-600 dark:text-blue-400" size={20} />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Quick Apply</h2>
-                <p className="text-gray-500 dark:text-zinc-400 text-sm font-medium">Applying for <span className="text-blue-600 dark:text-blue-400">{job.title}</span></p>
+                <h2 className="text-xl md:text-2xl font-black text-gray-900 dark:text-white tracking-tight">Quick Apply</h2>
+                <p className="text-gray-500 dark:text-zinc-400 text-[10px] md:text-sm font-medium">Applying for <span className="text-blue-600 dark:text-blue-400">{job.title}</span></p>
               </div>
             </div>
             <button
@@ -128,7 +128,7 @@ export default function QuickApplyModal({ job, company, onClose, onSuccess }: Qu
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2"
+                className="w-full py-3.5 md:py-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl md:rounded-2xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 text-sm md:text-base"
               >
                 {submitting ? (
                   <>

@@ -103,6 +103,41 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["userId", "keywords", "enabled"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A direct message between an employer and an applicant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "applicationId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "receiverId": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["applicationId", "senderId", "receiverId", "content"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A company review by a seeker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "companyId": { "type": "string" },
+        "seekerId": { "type": "string" },
+        "seekerName": { "type": "string" },
+        "rating": { "type": "number" },
+        "workLifeBalance": { "type": "number" },
+        "management": { "type": "number" },
+        "culture": { "type": "number" },
+        "comment": { "type": "string" },
+        "isAnonymous": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "flagged"] },
+        "flagReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["companyId", "seekerId", "rating", "comment", "status"]
     }
   },
   "firestore": {
@@ -129,6 +164,14 @@
     "/job_alerts/{alertId}": {
       "schema": "JobAlert",
       "description": "Job alerts"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Direct messages"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Company reviews"
     }
   }
 }

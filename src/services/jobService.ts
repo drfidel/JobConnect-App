@@ -110,7 +110,7 @@ export const jobService = {
       const newJob = {
         id: `mock_job_${Date.now()}`,
         ...jobData,
-        status: 'active',
+        status: jobData.status || 'active',
         viewCount: 0,
         createdAt: Timestamp.now(),
       } as Job;
@@ -121,7 +121,7 @@ export const jobService = {
     try {
       return await addDoc(jobsRef, {
         ...jobData,
-        status: 'active',
+        status: jobData.status || 'active',
         viewCount: 0,
         createdAt: serverTimestamp(),
       });

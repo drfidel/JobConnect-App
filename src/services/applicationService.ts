@@ -88,6 +88,7 @@ export const applicationService = {
         ...appData,
         status: 'applied',
         createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now(),
       } as Application;
       MOCK_APPLICATIONS.push(newApp);
       return { id: newApp.id };
@@ -98,6 +99,7 @@ export const applicationService = {
         ...appData,
         status: 'applied',
         createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, COLLECTION_NAME);
@@ -109,12 +111,16 @@ export const applicationService = {
       const index = MOCK_APPLICATIONS.findIndex(a => a.id === appId);
       if (index !== -1) {
         MOCK_APPLICATIONS[index].status = status;
+        MOCK_APPLICATIONS[index].updatedAt = Timestamp.now();
       }
       return;
     }
     const docRef = doc(db, COLLECTION_NAME, appId);
     try {
-      return await updateDoc(docRef, { status });
+      return await updateDoc(docRef, { 
+        status,
+        updatedAt: serverTimestamp()
+      });
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${appId}`);
     }

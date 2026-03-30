@@ -9,6 +9,7 @@ export interface Experience {
   endDate?: string;
   current: boolean;
   description: string;
+  requirements?: string;
 }
 
 export interface Education {
@@ -64,6 +65,7 @@ export interface Application {
   resumeURL?: string;
   coverLetter?: string;
   createdAt: any;
+  updatedAt?: any;
 }
 
 export interface Company {
@@ -87,6 +89,15 @@ export interface JobAlert {
   createdAt: any;
 }
 
+export interface Message {
+  id: string;
+  applicationId: string;
+  senderId: string;
+  receiverId: string;
+  content: string;
+  createdAt: any;
+}
+
 export interface Notification {
   id: string;
   userId: string;
@@ -96,4 +107,22 @@ export interface Notification {
   read: boolean;
   link?: string;
   createdAt: any;
+}
+
+export interface Review {
+  id: string;
+  companyId: string;
+  companyName: string; // Denormalized for easier display
+  seekerId: string;
+  authorName?: string; // Optional for anonymous reviews, renamed from seekerName
+  rating: number; // Overall rating
+  workLifeBalance: number;
+  management: number;
+  culture: number;
+  comment: string;
+  isAnonymous: boolean;
+  status: 'pending' | 'approved' | 'rejected' | 'flagged';
+  flagReason?: string;
+  createdAt: any;
+  updatedAt?: any;
 }

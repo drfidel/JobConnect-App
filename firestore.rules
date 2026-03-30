@@ -58,6 +58,31 @@ service cloud.firestore {
     //   - location: string (required)
     //   - createdAt: timestamp
     //
+    // Collection: messages
+    // Document ID: messageId
+    // Fields:
+    //   - applicationId: string (required)
+    //   - senderId: string (required)
+    //   - receiverId: string (required)
+    //   - content: string (required)
+    //   - createdAt: timestamp
+    //
+    // Collection: reviews
+    // Document ID: reviewId
+    // Fields:
+    //   - companyId: string (required)
+    //   - seekerId: string (required)
+    //   - seekerName: string
+    //   - rating: number (required, 1-5)
+    //   - workLifeBalance: number (1-5)
+    //   - management: number (1-5)
+    //   - culture: number (1-5)
+    //   - comment: string (required)
+    //   - isAnonymous: bool
+    //   - status: string (required, ['pending', 'approved', 'rejected', 'flagged'])
+    //   - flagReason: string
+    //   - createdAt: timestamp
+    //
     // ===============================================================
 
     // ===============================================================
@@ -153,6 +178,23 @@ service cloud.firestore {
              data.enabled is bool;
     }
 
+    function isValidMessage(data) {
+      return hasRequiredFields(['applicationId', 'senderId', 'receiverId', 'content']) &&
+             data.senderId == request.auth.uid &&
+             data.content is string && data.content.size() < 5000;
+    }
+
+    function isValidReview(data) {
+      return hasRequiredFields(['companyId', 'seekerId', 'rating', 'comment', 'status']) &&
+             data.seekerId == request.auth.uid &&
+             data.rating >= 1 && data.rating <= 5 &&
+             (data.workLifeBalance == null || (data.workLifeBalance >= 1 && data.workLifeBalance <= 5)) &&
+             (data.management == null || (data.management >= 1 && data.management <= 5)) &&
+             (data.culture == null || (data.culture >= 1 && data.culture <= 5)) &&
+             data.comment is string && data.comment.size() < 2000 &&
+             data.status in ['pending', 'approved', 'rejected', 'flagged'];
+    }
+
     // ===============================================================
     // Match Rules
     // ===============================================================
@@ -196,6 +238,24 @@ service cloud.firestore {
       allow create: if isAuthenticated() && isSeeker() && isValidJobAlert(request.resource.data);
       allow update: if isAuthenticated() && isOwner(resource.data.userId) && isValidJobAlert(request.resource.data);
       allow delete: if isAuthenticated() && isOwner(resource.data.userId);
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (isOwner(resource.data.senderId) || isOwner(resource.data.receiverId) || isAdmin());
+      allow create: if isAuthenticated() && isValidMessage(request.resource.data);
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'approved' || (isAuthenticated() && (isOwner(resource.data.seekerId) || isAdmin()));
+      allow create: if isAuthenticated() && isSeeker() && isValidReview(request.resource.data) && request.resource.data.status == 'pending';
+      allow update: if isAuthenticated() && (
+        (isOwner(resource.data.seekerId) && isValidReview(request.resource.data) && (
+          (resource.data.status == 'approved' && request.resource.data.status == 'flagged') || // Allow flagging
+          (request.resource.data.status == 'pending') // Allow editing (resets to pending)
+        )) || 
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (isOwner(resource.data.seekerId) || isAdmin());
     }
 
     match /{path=**} {

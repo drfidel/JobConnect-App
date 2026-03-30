@@ -1,18 +1,20 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../App';
 import { Job, Application, Company, JobAlert, Experience, Education } from '../types';
-import { Briefcase, CheckCircle, Clock, XCircle, Search, MapPin, DollarSign, Loader2, User, FileText, Bookmark, ChevronRight, LayoutDashboard, Settings, Bell, Plus, Trash2, Send, Star, Camera, Upload, Save, CheckCircle2, AlertCircle, X, GraduationCap, Building2, Calendar as CalendarIcon, Pencil } from 'lucide-react';
+import { Briefcase, CheckCircle, Clock, XCircle, Search, MapPin, DollarSign, Loader2, User, FileText, Bookmark, ChevronRight, LayoutDashboard, Settings, Bell, Plus, Trash2, Send, Star, Camera, Upload, Save, CheckCircle2, AlertCircle, X, GraduationCap, Building2, Calendar as CalendarIcon, Pencil, Filter, ListFilter } from 'lucide-react';
 import SkillAutocomplete from '../components/SkillAutocomplete';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { Link, useNavigate } from 'react-router-dom';
 import QuickApplyModal from '../components/QuickApplyModal';
+import ApplicationDetailsModal from '../components/ApplicationDetailsModal';
 import { GoogleGenAI, Type } from "@google/genai";
 import { profileService } from '../services/profileService';
 import { applicationService } from '../services/applicationService';
 import { jobService } from '../services/jobService';
 import { companyService } from '../services/companyService';
 import { jobAlertService } from '../services/jobAlertService';
+import { getJobDeadlineStatus } from '../lib/jobUtils';
 import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
@@ -27,6 +29,7 @@ export default function SeekerDashboard() {
   const [activeTab, setActiveTab] = useState<'applications' | 'recommended' | 'saved' | 'profile' | 'alerts'>('applications');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
 
   const recentAppsCount = useMemo(() => {
     const sevenDaysAgo = new Date();
@@ -70,7 +73,8 @@ export default function SeekerDashboard() {
     startDate: '',
     endDate: '',
     current: false,
-    description: ''
+    description: '',
+    requirements: ''
   });
 
   const [eduForm, setEduForm] = useState<Partial<Education>>({
@@ -124,7 +128,7 @@ export default function SeekerDashboard() {
               },
             },
             {
-              text: "Extract work experience and education from this resume. Return a JSON object with 'experience' and 'education' arrays. Each experience should have 'company', 'position', 'location', 'startDate', 'endDate', 'current' (boolean), and 'description'. Each education should have 'school', 'degree', 'fieldOfStudy', 'startDate', 'endDate', and 'description'. Use ISO date format (YYYY-MM-DD) for dates if possible, or just the year. If a date is missing, leave it empty.",
+              text: "Extract work experience and education from this resume. Return a JSON object with 'experience' and 'education' arrays. Each experience should have 'company', 'position', 'location', 'startDate', 'endDate', 'current' (boolean), 'description', and 'requirements' (key skills or qualifications required for that role). Each education should have 'school', 'degree', 'fieldOfStudy', 'startDate', 'endDate', and 'description'. Use ISO date format (YYYY-MM-DD) for dates if possible, or just the year. If a date is missing, leave it empty.",
             },
           ],
           config: {
@@ -144,6 +148,7 @@ export default function SeekerDashboard() {
                       endDate: { type: Type.STRING },
                       current: { type: Type.BOOLEAN },
                       description: { type: Type.STRING },
+                      requirements: { type: Type.STRING },
                     },
                   },
                 },
@@ -258,7 +263,8 @@ export default function SeekerDashboard() {
           startDate: expForm.startDate!,
           endDate: expForm.current ? '' : expForm.endDate,
           current: expForm.current || false,
-          description: expForm.description || ''
+          description: expForm.description || '',
+          requirements: expForm.requirements || ''
         };
         setExperience([...experience, newExp]);
       }
@@ -269,7 +275,8 @@ export default function SeekerDashboard() {
         startDate: '',
         endDate: '',
         current: false,
-        description: ''
+        description: '',
+        requirements: ''
       });
       setIsAddingExp(false);
     }
@@ -283,7 +290,8 @@ export default function SeekerDashboard() {
       startDate: exp.startDate,
       endDate: exp.endDate,
       current: exp.current,
-      description: exp.description
+      description: exp.description,
+      requirements: exp.requirements || ''
     });
     setEditingExpId(exp.id);
     setIsAddingExp(false);
@@ -299,7 +307,8 @@ export default function SeekerDashboard() {
       startDate: '',
       endDate: '',
       current: false,
-      description: ''
+      description: '',
+      requirements: ''
     });
   };
 
@@ -460,10 +469,15 @@ export default function SeekerDashboard() {
   };
 
   const handleToggleAlert = async (alertId: string, currentStatus: boolean) => {
+    // Optimistic update for immediate UI feedback
+    setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, enabled: !currentStatus } : a));
+    
     try {
       await jobAlertService.toggleAlert(alertId, !currentStatus);
     } catch (error) {
       console.error('Error toggling alert:', error);
+      // Revert on error
+      setAlerts(prev => prev.map(a => a.id === alertId ? { ...a, enabled: currentStatus } : a));
     }
   };
 
@@ -564,24 +578,44 @@ export default function SeekerDashboard() {
         {activeTab === 'applications' && (
           <div className="space-y-6">
             {/* Status Filter Dropdown */}
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <label className="text-sm font-bold text-gray-500 dark:text-zinc-400 uppercase tracking-wider">Filter by Status:</label>
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none"
-                >
-                  <option value="all">All Applications</option>
-                  <option value="applied">Applied</option>
-                  <option value="reviewed">Reviewed</option>
-                  <option value="accepted">Accepted</option>
-                  <option value="rejected">Rejected</option>
-                </select>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 bg-gray-50/50 dark:bg-zinc-800/30 p-4 rounded-2xl border border-gray-100 dark:border-zinc-800">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-xl bg-white dark:bg-zinc-900 flex items-center justify-center border border-gray-100 dark:border-zinc-800 shadow-sm">
+                  <ListFilter size={20} className="text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-black text-gray-400 dark:text-zinc-500 uppercase tracking-widest mb-1">Filter by Status</label>
+                  <div className="flex items-center gap-2">
+                    <select 
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl px-4 py-2 text-sm font-bold text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 transition-all outline-none appearance-none pr-10 relative cursor-pointer"
+                      style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%236B7280\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 0.75rem center', backgroundSize: '1rem' }}
+                    >
+                      <option value="all">All Applications</option>
+                      <option value="applied">Applied</option>
+                      <option value="reviewed">Reviewed</option>
+                      <option value="accepted">Accepted</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                    {statusFilter !== 'all' && (
+                      <button 
+                        onClick={() => setStatusFilter('all')}
+                        className="p-2 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        title="Clear filter"
+                      >
+                        <X size={18} />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <p className="text-sm text-gray-500 dark:text-zinc-400 font-medium">
-                Showing {applications.filter(app => statusFilter === 'all' || app.status === statusFilter).length} applications
-              </p>
+              <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-zinc-900 rounded-xl border border-gray-100 dark:border-zinc-800 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <p className="text-xs text-gray-500 dark:text-zinc-400 font-bold uppercase tracking-wider">
+                  {applications.filter(app => statusFilter === 'all' || app.status === statusFilter).length} Applications Found
+                </p>
+              </div>
             </div>
 
             {applications.filter(app => statusFilter === 'all' || app.status === statusFilter).length > 0 ? (
@@ -597,70 +631,82 @@ export default function SeekerDashboard() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ scale: 1.02, y: -5 }}
-                      className="bg-white dark:bg-zinc-900 p-10 rounded-[2.5rem] border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900/50 transition-all group relative overflow-hidden"
+                      className="bg-white dark:bg-zinc-900 p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900/50 transition-all group relative overflow-hidden"
                     >
-                      <div className="flex flex-col md:flex-row md:items-center gap-10 relative z-10">
-                        <div className="w-24 h-24 bg-gray-50 dark:bg-zinc-800 rounded-3xl flex items-center justify-center border border-gray-100 dark:border-zinc-700 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
+                      <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10 relative z-10">
+                        <div className="w-16 h-16 md:w-24 md:h-24 bg-gray-50 dark:bg-zinc-800 rounded-2xl md:rounded-3xl flex items-center justify-center border border-gray-100 dark:border-zinc-700 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
                           {company?.logoURL ? (
-                            <img src={company.logoURL} alt="Logo" className="w-full h-full object-contain p-3" referrerPolicy="no-referrer" />
+                            <img src={company.logoURL} alt="Logo" className="w-full h-full object-contain p-2 md:p-3" referrerPolicy="no-referrer" />
                           ) : (
-                            <Briefcase className="text-gray-300 dark:text-zinc-600" size={48} />
+                            <Briefcase className="text-gray-300 dark:text-zinc-600" size={32} />
                           )}
                         </div>
                         
                         <div className="flex-grow">
-                          <div className="flex flex-wrap items-center gap-4 mb-5">
-                            <span className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border shadow-sm ${getStatusColor(app.status)}`}>
+                          <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4 md:mb-5">
+                            <span className={`flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border shadow-sm ${getStatusColor(app.status)}`}>
                               {getStatusIcon(app.status)} {app.status}
                             </span>
-                            <span className="inline-flex items-center gap-2 text-[10px] text-gray-400 dark:text-zinc-500 font-bold uppercase tracking-widest">
-                              <Clock size={14} className="text-blue-500" />
-                              Applied {formatDistanceToNow(app.createdAt?.toDate() || new Date())} ago
+                            <span className="inline-flex items-center gap-2 text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-bold uppercase tracking-widest">
+                              <Clock size={12} className="text-blue-500" />
+                              Applied {formatDistanceToNow(app.createdAt?.toDate?.() || new Date(app.createdAt))} ago
                             </span>
+                            {app.updatedAt && (
+                              <span className="inline-flex items-center gap-2 text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-bold uppercase tracking-widest">
+                                <Clock size={12} className="text-green-500" />
+                                Updated {formatDistanceToNow(app.updatedAt?.toDate?.() || new Date(app.updatedAt))} ago
+                              </span>
+                            )}
                             {job?.jobType && (
-                              <span className="px-3 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 text-[10px] font-black rounded-lg uppercase tracking-wider border border-gray-200 dark:border-zinc-700">
+                              <span className="px-2 py-0.5 md:px-3 md:py-1 bg-gray-100 dark:bg-zinc-800 text-gray-500 dark:text-zinc-400 text-[9px] md:text-[10px] font-black rounded-lg uppercase tracking-wider border border-gray-200 dark:border-zinc-700">
                                 {job.jobType.replace('-', ' ')}
                               </span>
                             )}
                           </div>
                           
-                          <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight">{job?.title || 'Loading Job...'}</h3>
+                          <h3 className="text-xl md:text-3xl font-black text-gray-900 dark:text-white mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight">{job?.title || 'Loading Job...'}</h3>
                           
-                          <div className="flex items-center gap-2 mb-8">
-                            <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                              <Building2 size={12} className="text-blue-500" />
+                          <div className="flex items-center gap-2 mb-6 md:mb-8">
+                            <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                              <Building2 size={10} className="text-blue-500" />
                             </div>
-                            <Link to={`/company/${job?.companyId}`} className="text-blue-600 dark:text-blue-400 font-black hover:underline transition-all">{company?.name || 'Loading Company...'}</Link>
+                            <Link to={`/company/${job?.companyId}`} className="text-sm md:text-base text-blue-600 dark:text-blue-400 font-black hover:underline transition-all">{company?.name || 'Loading Company...'}</Link>
                           </div>
                           
-                          <div className="flex flex-wrap gap-8">
-                            <div className="flex items-center gap-3 group/info">
-                              <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                                <MapPin size={18} className="text-blue-600 dark:text-blue-400" />
+                          <div className="flex flex-wrap gap-4 md:gap-8">
+                            <div className="flex items-center gap-2 md:gap-3 group/info">
+                              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                                <MapPin size={16} className="text-blue-600 dark:text-blue-400" />
                               </div>
                               <div className="space-y-0.5">
-                                <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Location</p>
-                                <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job?.location}</p>
+                                <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Location</p>
+                                <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job?.location}</p>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3 group/info">
-                              <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                                <DollarSign size={18} className="text-green-600 dark:text-green-400" />
+                            <div className="flex items-center gap-2 md:gap-3 group/info">
+                              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                                <DollarSign size={16} className="text-green-600 dark:text-green-400" />
                               </div>
                               <div className="space-y-0.5">
-                                <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Salary</p>
-                                <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job?.salaryRange || 'Negotiable'}</p>
+                                <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Salary</p>
+                                <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job?.salaryRange || 'Negotiable'}</p>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center justify-end shrink-0">
+                        <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
+                          <button 
+                            onClick={() => setSelectedApplication(app)}
+                            className="flex items-center justify-center gap-3 px-6 py-3 md:px-8 md:py-4 bg-white dark:bg-zinc-800 text-gray-900 dark:text-white border border-gray-200 dark:border-zinc-700 font-black text-xs rounded-xl md:rounded-2xl hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all shadow-sm w-full md:w-auto"
+                          >
+                            View Application <FileText size={18} />
+                          </button>
                           <Link 
                             to={`/jobs/${app.jobId}`}
-                            className="flex items-center gap-3 px-8 py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-black text-xs rounded-2xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all shadow-sm hover:shadow-blue-600/20"
+                            className="flex items-center justify-center gap-3 px-6 py-3 md:px-8 md:py-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 font-black text-xs rounded-xl md:rounded-2xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all shadow-sm hover:shadow-blue-600/20 w-full md:w-auto"
                           >
-                            View Details <ChevronRight size={18} />
+                            Job Details <ChevronRight size={18} />
                           </Link>
                         </div>
                       </div>
@@ -693,77 +739,86 @@ export default function SeekerDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.02, y: -5 }}
-                  className={`p-10 rounded-[2.5rem] border transition-all group relative overflow-hidden ${
+                  className={`p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border transition-all group relative overflow-hidden ${
                     job.featured
                       ? 'bg-slate-900/5 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 shadow-xl'
                       : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900/50'
                   }`}
                 >
-                  <div className="flex flex-col md:flex-row md:items-center gap-10 relative z-10">
-                    <div className="w-24 h-24 bg-gray-50 dark:bg-zinc-800 rounded-3xl flex items-center justify-center border border-gray-100 dark:border-zinc-700 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
+                  <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10 relative z-10">
+                    <div className="w-16 h-16 md:w-24 md:h-24 bg-gray-50 dark:bg-zinc-800 rounded-2xl md:rounded-3xl flex items-center justify-center border border-gray-100 dark:border-zinc-700 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
                       {companies[job.companyId]?.logoURL ? (
-                        <img src={companies[job.companyId].logoURL} alt="Logo" className="w-full h-full object-contain p-3" referrerPolicy="no-referrer" />
+                        <img src={companies[job.companyId].logoURL} alt="Logo" className="w-full h-full object-contain p-2 md:p-3" referrerPolicy="no-referrer" />
                       ) : (
-                        <Briefcase className="text-gray-300 dark:text-zinc-600" size={48} />
+                        <Briefcase className="text-gray-300 dark:text-zinc-600" size={32} />
                       )}
                     </div>
                     <div className="flex-grow">
-                      <div className="flex items-center gap-4 mb-5">
-                        <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight">{job.title}</h3>
+                      <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4 md:mb-5">
+                        <h3 className="text-xl md:text-3xl font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight">{job.title}</h3>
                         {job.featured && (
-                          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20">
-                            <Star size={12} fill="currentColor" /> Featured
+                          <span className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[9px] md:text-[10px] font-black rounded-full uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20">
+                            <Star size={10} fill="currentColor" /> Featured
+                          </span>
+                        )}
+                        {getJobDeadlineStatus(job) === 'expired' ? (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 bg-red-500 text-white text-[9px] md:text-[10px] font-black rounded-full uppercase tracking-widest border border-red-600 shadow-lg shadow-red-500/20">
+                            <XCircle size={10} fill="currentColor" /> Expired
+                          </span>
+                        ) : getJobDeadlineStatus(job) === 'nearing' && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 bg-orange-500 text-white text-[9px] md:text-[10px] font-black rounded-full uppercase tracking-widest border border-orange-600 shadow-lg shadow-orange-500/20 animate-pulse">
+                            <AlertCircle size={10} fill="currentColor" /> Closing Soon
                           </span>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2 mb-8">
-                        <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                          <Building2 size={12} className="text-blue-500" />
+                      <div className="flex items-center gap-2 mb-6 md:mb-8">
+                        <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                          <Building2 size={10} className="text-blue-500" />
                         </div>
-                        <Link to={`/company/${job.companyId}`} className="text-blue-600 dark:text-blue-400 font-black hover:underline transition-all">{companies[job.companyId]?.name || 'Unknown Company'}</Link>
+                        <Link to={`/company/${job.companyId}`} className="text-sm md:text-base text-blue-600 dark:text-blue-400 font-black hover:underline transition-all">{companies[job.companyId]?.name || 'Unknown Company'}</Link>
                       </div>
 
-                      <div className="flex flex-wrap gap-8">
-                        <div className="flex items-center gap-3 group/info">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                            <MapPin size={18} className="text-blue-600 dark:text-blue-400" />
+                      <div className="flex flex-wrap gap-4 md:gap-8">
+                        <div className="flex items-center gap-2 md:gap-3 group/info">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                            <MapPin size={16} className="text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Location</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job.location}</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Location</p>
+                            <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job.location}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 group/info">
-                          <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                            <DollarSign size={18} className="text-green-600 dark:text-green-400" />
+                        <div className="flex items-center gap-2 md:gap-3 group/info">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                            <DollarSign size={16} className="text-green-600 dark:text-green-400" />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Salary</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job.salaryRange || 'Negotiable'}</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Salary</p>
+                            <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job.salaryRange || 'Negotiable'}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 group/info">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                            <Clock size={18} className="text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center gap-2 md:gap-3 group/info">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                            <Clock size={16} className="text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Job Type</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job.jobType.replace('-', ' ')}</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Job Type</p>
+                            <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job.jobType.replace('-', ' ')}</p>
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col md:items-end gap-4 shrink-0">
+                    <div className="flex flex-col sm:flex-row md:flex-col md:items-end gap-3 md:gap-4 shrink-0">
                       <button
                         onClick={(e) => handleApplyClick(e, job)}
-                        className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-2 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
+                        className="px-6 py-3 md:px-8 md:py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs md:text-sm rounded-xl md:rounded-2xl shadow-xl shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-2 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0 w-full md:w-auto"
                       >
                         <Send size={18} /> Quick Apply
                       </button>
                       <Link 
                         to={`/jobs/${job.id}`}
-                        className="text-xs text-gray-400 hover:text-blue-600 font-black tracking-widest uppercase transition-colors"
+                        className="text-[10px] md:text-xs text-gray-400 hover:text-blue-600 font-black tracking-widest uppercase transition-colors text-center md:text-right"
                       >
                         View Details
                       </Link>
@@ -791,77 +846,86 @@ export default function SeekerDashboard() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
                   whileHover={{ scale: 1.02, y: -5 }}
-                  className={`p-10 rounded-[2.5rem] border transition-all group relative overflow-hidden ${
+                  className={`p-6 md:p-10 rounded-[2rem] md:rounded-[2.5rem] border transition-all group relative overflow-hidden ${
                     job.featured
                       ? 'bg-slate-900/5 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 shadow-xl'
                       : 'bg-white dark:bg-zinc-900 border-gray-100 dark:border-zinc-800 shadow-sm hover:shadow-xl hover:border-blue-100 dark:hover:border-blue-900/50'
                   }`}
                 >
-                  <div className="flex flex-col md:flex-row md:items-center gap-10 relative z-10">
-                    <div className="w-24 h-24 bg-gray-50 dark:bg-zinc-800 rounded-3xl flex items-center justify-center border border-gray-100 dark:border-zinc-700 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
+                  <div className="flex flex-col md:flex-row md:items-center gap-6 md:gap-10 relative z-10">
+                    <div className="w-16 h-16 md:w-24 md:h-24 bg-gray-50 dark:bg-zinc-800 rounded-2xl md:rounded-3xl flex items-center justify-center border border-gray-100 dark:border-zinc-700 overflow-hidden shrink-0 group-hover:scale-105 transition-transform duration-500">
                       {companies[job.companyId]?.logoURL ? (
-                        <img src={companies[job.companyId].logoURL} alt="Logo" className="w-full h-full object-contain p-3" referrerPolicy="no-referrer" />
+                        <img src={companies[job.companyId].logoURL} alt="Logo" className="w-full h-full object-contain p-2 md:p-3" referrerPolicy="no-referrer" />
                       ) : (
-                        <Briefcase className="text-gray-300 dark:text-zinc-600" size={48} />
+                        <Briefcase className="text-gray-300 dark:text-zinc-600" size={32} />
                       )}
                     </div>
                     <div className="flex-grow">
-                      <div className="flex items-center gap-4 mb-5">
-                        <h3 className="text-2xl md:text-3xl font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight">{job.title}</h3>
+                      <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4 md:mb-5">
+                        <h3 className="text-xl md:text-3xl font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors leading-tight tracking-tight">{job.title}</h3>
                         {job.featured && (
-                          <span className="inline-flex items-center gap-2 px-4 py-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[10px] font-black rounded-full uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20">
-                            <Star size={12} fill="currentColor" /> Featured
+                          <span className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 bg-gradient-to-r from-yellow-400 to-orange-500 text-white text-[9px] md:text-[10px] font-black rounded-full uppercase tracking-[0.2em] shadow-lg shadow-orange-500/20">
+                            <Star size={10} fill="currentColor" /> Featured
+                          </span>
+                        )}
+                        {getJobDeadlineStatus(job) === 'expired' ? (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 bg-red-500 text-white text-[9px] md:text-[10px] font-black rounded-full uppercase tracking-widest border border-red-600 shadow-lg shadow-red-500/20">
+                            <XCircle size={10} fill="currentColor" /> Expired
+                          </span>
+                        ) : getJobDeadlineStatus(job) === 'nearing' && (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 md:px-4 md:py-1.5 bg-orange-500 text-white text-[9px] md:text-[10px] font-black rounded-full uppercase tracking-widest border border-orange-600 shadow-lg shadow-orange-500/20 animate-pulse">
+                            <AlertCircle size={10} fill="currentColor" /> Closing Soon
                           </span>
                         )}
                       </div>
                       
-                      <div className="flex items-center gap-2 mb-8">
-                        <div className="w-6 h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                           <Building2 size={12} className="text-blue-500" />
+                      <div className="flex items-center gap-2 mb-6 md:mb-8">
+                        <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                           <Building2 size={10} className="text-blue-500" />
                         </div>
-                        <Link to={`/company/${job.companyId}`} className="text-blue-600 dark:text-blue-400 font-black hover:underline transition-all">{companies[job.companyId]?.name || 'Unknown Company'}</Link>
+                        <Link to={`/company/${job.companyId}`} className="text-sm md:text-base text-blue-600 dark:text-blue-400 font-black hover:underline transition-all">{companies[job.companyId]?.name || 'Unknown Company'}</Link>
                       </div>
 
-                      <div className="flex flex-wrap gap-8">
-                        <div className="flex items-center gap-3 group/info">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                            <MapPin size={18} className="text-blue-600 dark:text-blue-400" />
+                      <div className="flex flex-wrap gap-4 md:gap-8">
+                        <div className="flex items-center gap-2 md:gap-3 group/info">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                            <MapPin size={16} className="text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Location</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job.location}</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Location</p>
+                            <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job.location}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 group/info">
-                          <div className="w-10 h-10 rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                            <DollarSign size={18} className="text-green-600 dark:text-green-400" />
+                        <div className="flex items-center gap-2 md:gap-3 group/info">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-green-50 dark:bg-green-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                            <DollarSign size={16} className="text-green-600 dark:text-green-400" />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Salary</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job.salaryRange || 'Negotiable'}</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Salary</p>
+                            <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job.salaryRange || 'Negotiable'}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 group/info">
-                          <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
-                            <Clock size={18} className="text-blue-600 dark:text-blue-400" />
+                        <div className="flex items-center gap-2 md:gap-3 group/info">
+                          <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center group-hover/info:scale-110 transition-transform">
+                            <Clock size={16} className="text-blue-600 dark:text-blue-400" />
                           </div>
                           <div className="space-y-0.5">
-                            <p className="text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Job Type</p>
-                            <p className="text-sm font-bold text-gray-700 dark:text-zinc-300">{job.jobType.replace('-', ' ')}</p>
+                            <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-zinc-500 font-black uppercase tracking-widest">Job Type</p>
+                            <p className="text-xs md:text-sm font-bold text-gray-700 dark:text-zinc-300">{job.jobType.replace('-', ' ')}</p>
                           </div>
                         </div>
                       </div>
                     </div>
-                    <div className="flex flex-col md:items-end gap-4 shrink-0">
+                    <div className="flex flex-col sm:flex-row md:flex-col md:items-end gap-3 md:gap-4 shrink-0">
                       <button
                         onClick={(e) => handleApplyClick(e, job)}
-                        className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-sm rounded-2xl shadow-xl shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-2 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0"
+                        className="px-6 py-3 md:px-8 md:py-4 bg-blue-600 hover:bg-blue-700 text-white font-black text-xs md:text-sm rounded-xl md:rounded-2xl shadow-xl shadow-blue-600/20 hover:shadow-blue-600/40 hover:-translate-y-1 active:translate-y-0 transition-all flex items-center justify-center gap-2 md:opacity-0 md:group-hover:opacity-100 md:translate-y-2 md:group-hover:translate-y-0 w-full md:w-auto"
                       >
                         <Send size={18} /> Quick Apply
                       </button>
                       <Link 
                         to={`/jobs/${job.id}`}
-                        className="text-xs text-gray-400 hover:text-blue-600 font-black tracking-widest uppercase transition-colors"
+                        className="text-[10px] md:text-xs text-gray-400 hover:text-blue-600 font-black tracking-widest uppercase transition-colors text-center md:text-right"
                       >
                         View Details
                       </Link>
@@ -1160,6 +1224,13 @@ export default function SeekerDashboard() {
                                     value={expForm.description}
                                     onChange={(e) => setExpForm({...expForm, description: e.target.value})}
                                   />
+                                  <textarea
+                                    placeholder="Job Requirements (e.g. specific skills or qualifications required for this role)..."
+                                    rows={3}
+                                    className="w-full px-4 py-2.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white resize-none"
+                                    value={expForm.requirements}
+                                    onChange={(e) => setExpForm({...expForm, requirements: e.target.value})}
+                                  />
                                   <div className="flex justify-end gap-3">
                                     <button 
                                       type="button" 
@@ -1274,6 +1345,13 @@ export default function SeekerDashboard() {
                               className="w-full px-4 py-2.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white resize-none"
                               value={expForm.description}
                               onChange={(e) => setExpForm({...expForm, description: e.target.value})}
+                            />
+                            <textarea
+                              placeholder="Job Requirements (e.g. specific skills or qualifications required for this role)..."
+                              rows={3}
+                              className="w-full px-4 py-2.5 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white resize-none"
+                              value={expForm.requirements}
+                              onChange={(e) => setExpForm({...expForm, requirements: e.target.value})}
                             />
                             <div className="flex justify-end gap-3">
                               <button 
@@ -1548,6 +1626,14 @@ export default function SeekerDashboard() {
                                 </div>
                                 <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-2">{exp.company} • {exp.location}</div>
                                 <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">{exp.description}</p>
+                                {exp.requirements && (
+                                  <div className="mt-3">
+                                    <p className="text-[10px] font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-1">Job Requirements</p>
+                                    <p className="text-xs text-gray-500 dark:text-zinc-500 leading-relaxed bg-gray-50/50 dark:bg-zinc-800/50 p-3 rounded-xl border border-gray-100 dark:border-zinc-700/50 italic">
+                                      {exp.requirements}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             ))
                           ) : (
@@ -1738,26 +1824,29 @@ export default function SeekerDashboard() {
                       </div>
                     </div>
                     <div className="flex items-center gap-6">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className={`text-[10px] font-bold uppercase tracking-tighter ${alert.enabled ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-600'}`}>
-                          {alert.enabled ? 'On' : 'Off'}
+                      <div className="flex flex-col items-center gap-1.5">
+                        <span className={`text-[9px] font-black uppercase tracking-widest ${alert.enabled ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-zinc-600'}`}>
+                          {alert.enabled ? 'Active' : 'Paused'}
                         </span>
                         <button
                           onClick={() => handleToggleAlert(alert.id, alert.enabled)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${
+                          role="switch"
+                          aria-checked={alert.enabled}
+                          aria-label={`Toggle ${alert.keywords} alert`}
+                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 ${
                             alert.enabled ? 'bg-blue-600' : 'bg-gray-200 dark:bg-zinc-700'
                           }`}
                         >
                           <span
-                            className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                              alert.enabled ? 'translate-x-5' : 'translate-x-1'
+                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm ${
+                              alert.enabled ? 'translate-x-6' : 'translate-x-1'
                             }`}
                           />
                         </button>
                       </div>
                       <button
                         onClick={() => handleDeleteAlert(alert.id)}
-                        className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-100 dark:border-zinc-700"
+                        className="p-2.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors bg-gray-50 dark:bg-zinc-800 rounded-xl border border-gray-100 dark:border-zinc-700 hover:border-red-100 dark:hover:border-red-900/30"
                         title="Delete Alert"
                       >
                         <Trash2 size={18} />
@@ -1786,6 +1875,14 @@ export default function SeekerDashboard() {
             onSuccess={() => {
               // Optional: show a toast or something
             }}
+          />
+        )}
+        {selectedApplication && (
+          <ApplicationDetailsModal
+            application={selectedApplication}
+            job={jobs[selectedApplication.jobId]}
+            company={jobs[selectedApplication.jobId] ? companies[jobs[selectedApplication.jobId].companyId] : undefined}
+            onClose={() => setSelectedApplication(null)}
           />
         )}
       </AnimatePresence>
