@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../App';
-import { Company, Job } from '../types';
+import { Company, Job, Review } from '../types';
 import { Building2, MapPin, Globe, Briefcase, ChevronRight, Loader2, Calendar, DollarSign, Clock, Edit2, Star, MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { companyService } from '../services/companyService';
 import { jobService } from '../services/jobService';
+import { reviewService } from '../services/reviewService';
 import ReviewForm from '../components/ReviewForm';
 import ReviewList from '../components/ReviewList';
 
@@ -15,6 +16,7 @@ export default function CompanyProfile() {
   const { user, profile } = useAuth();
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'jobs' | 'reviews'>('jobs');
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -31,10 +33,18 @@ export default function CompanyProfile() {
           // Fetch active jobs for this company
           const unsubscribeJobs = jobService.subscribeToCompanyJobs(id, (jobsData) => {
             setJobs(jobsData.filter(j => j.status === 'active'));
+          });
+
+          // Fetch reviews for this company
+          const unsubscribeReviews = reviewService.subscribeToCompanyReviews(id, (reviewsData) => {
+            setReviews(reviewsData);
             setLoading(false);
           });
 
-          return () => unsubscribeJobs();
+          return () => {
+            unsubscribeJobs();
+            unsubscribeReviews();
+          };
         } else {
           setLoading(false);
         }
@@ -46,6 +56,10 @@ export default function CompanyProfile() {
 
     fetchCompanyData();
   }, [id]);
+
+  const averageRating = reviews.length > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
+    : null;
 
   if (loading) {
     return (
@@ -95,6 +109,13 @@ export default function CompanyProfile() {
                 </a>
               )}
               <div className="flex items-center gap-2"><Briefcase size={18} className="text-blue-600 dark:text-blue-400 md:size-[20px]" /> {jobs.length} Open Positions</div>
+              {averageRating && (
+                <div className="flex items-center gap-2">
+                  <Star size={18} className="text-yellow-400 fill-yellow-400 md:size-[20px]" />
+                  <span className="font-bold text-gray-900 dark:text-white">{averageRating}</span>
+                  <span className="text-gray-400 dark:text-zinc-500">({reviews.length} reviews)</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -140,6 +161,7 @@ export default function CompanyProfile() {
                   {activeTab === 'reviews' && (
                     <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600 dark:bg-blue-400 rounded-full" />
                   )}
+                  <span className="ml-2 text-xs bg-blue-50 dark:bg-blue-900/20 px-2 py-0.5 rounded-full">{reviews.length}</span>
                 </button>
               </div>
               {activeTab === 'reviews' && profile?.role === 'seeker' && (

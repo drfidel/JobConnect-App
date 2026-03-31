@@ -289,12 +289,28 @@ export default function JobDetails() {
                 <p className="text-sm text-blue-700 dark:text-blue-300 font-medium">You are logged in as an employer. Only job seekers can apply for positions.</p>
               </div>
             ) : (
-              <button 
-                onClick={() => setIsApplying(true)}
-                className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
-              >
-                Apply for this Job
-              </button>
+              <div className="space-y-3">
+                <button 
+                  onClick={() => setIsApplying(true)}
+                  className="w-full py-4 bg-blue-600 text-white font-bold rounded-xl shadow-lg hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                >
+                  Apply for this Job
+                </button>
+                
+                {user && profile?.role === 'seeker' && (
+                  <button 
+                    onClick={handleToggleSave}
+                    className={`w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 border ${
+                      isSaved 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/30' 
+                        : 'bg-white dark:bg-zinc-800 text-gray-700 dark:text-zinc-300 border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-700/50'
+                    }`}
+                  >
+                    <Bookmark size={18} fill={isSaved ? "currentColor" : "none"} />
+                    {isSaved ? 'Saved to Profile' : 'Save for Later'}
+                  </button>
+                )}
+              </div>
             )}
 
             <div className="mt-8 pt-8 border-t border-gray-50 dark:border-zinc-800">

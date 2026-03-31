@@ -15,6 +15,7 @@ import JobDetails from './pages/JobDetails';
 import AdminPanel from './pages/AdminPanel';
 import Profile from './pages/Profile';
 import CompanyProfile from './pages/CompanyProfile';
+import ForgotPassword from './pages/ForgotPassword';
 
 interface AuthContextType {
   user: User | null;
@@ -106,6 +107,7 @@ export default function App() {
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
                   <Route path="/register" element={!user ? <Register /> : <Navigate to="/" />} />
+                  <Route path="/forgot-password" element={<ForgotPassword />} />
                   <Route path="/jobs/:id" element={<JobDetails />} />
                   <Route path="/profile" element={user ? <Profile /> : <Navigate to="/login" />} />
                   <Route path="/company/:id" element={<CompanyProfile />} />

@@ -20,6 +20,8 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'jobs' | 'users' | 'analytics' | 'reviews'>('jobs');
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'seeker' | 'employer' | 'admin'>('all');
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
 
   useEffect(() => {
     if (profile?.role !== 'admin') return;
@@ -86,6 +88,17 @@ export default function AdminPanel() {
       } catch (err) {
         console.error("Error deleting user:", err);
       }
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: 'seeker' | 'employer' | 'admin') => {
+    setUpdatingUserId(userId);
+    try {
+      await profileService.updateProfile(userId, { role: newRole });
+    } catch (err) {
+      console.error("Error updating user role:", err);
+    } finally {
+      setUpdatingUserId(null);
     }
   };
 
@@ -291,12 +304,29 @@ export default function AdminPanel() {
         {activeTab === 'users' && (
           <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden transition-colors duration-300">
             <div className="p-6 border-b border-gray-50 dark:border-gray-700 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Platform Users</h3>
+              <div className="flex items-center gap-4">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Platform Users</h3>
+                <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl transition-colors duration-300">
+                  {(['all', 'seeker', 'employer', 'admin'] as const).map(role => (
+                    <button
+                      key={role}
+                      onClick={() => setRoleFilter(role)}
+                      className={`px-4 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                        roleFilter === role 
+                          ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm' 
+                          : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="relative w-full md:w-72">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" size={18} />
                 <input 
                   type="text" 
-                  placeholder="Search users..." 
+                  placeholder="Search by name or email..." 
                   className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:bg-white dark:focus:bg-gray-900 transition-all"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -315,7 +345,13 @@ export default function AdminPanel() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-                  {users.filter(u => u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase())).map(u => (
+                  {users
+                    .filter(u => {
+                      const matchesSearch = u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                      return matchesSearch && matchesRole;
+                    })
+                    .map(u => (
                     <tr key={u.uid} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -327,16 +363,23 @@ export default function AdminPanel() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">{u.email}</td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                          u.role === 'admin' ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400' :
-                          u.role === 'employer' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400' :
-                          'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-                        }`}>
-                          {u.role === 'admin' && <Shield size={10} />}
-                          {u.role === 'employer' && <Briefcase size={10} />}
-                          {u.role === 'seeker' && <User size={10} />}
-                          {u.role}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={u.role}
+                            disabled={updatingUserId === u.uid || u.uid === user?.uid}
+                            onChange={(e) => handleUpdateUserRole(u.uid, e.target.value as any)}
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-transparent border-none focus:ring-0 cursor-pointer disabled:cursor-not-allowed ${
+                              u.role === 'admin' ? 'text-purple-600 dark:text-purple-400' :
+                              u.role === 'employer' ? 'text-blue-600 dark:text-blue-400' :
+                              'text-orange-600 dark:text-orange-400'
+                            }`}
+                          >
+                            <option value="seeker">Seeker</option>
+                            <option value="employer">Employer</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                          {updatingUserId === u.uid && <Loader2 size={12} className="animate-spin text-blue-500" />}
+                        </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                         {u.createdAt ? formatDistanceToNow(u.createdAt.toDate()) + ' ago' : 'N/A'}
@@ -344,14 +387,26 @@ export default function AdminPanel() {
                       <td className="px-6 py-4 text-right">
                         <button 
                           onClick={() => handleDeleteUser(u.uid)}
-                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all" 
-                          title="Delete User"
+                          disabled={u.uid === user?.uid}
+                          className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed" 
+                          title={u.uid === user?.uid ? "You cannot delete yourself" : "Delete User"}
                         >
                           <Trash2 size={18} />
                         </button>
                       </td>
                     </tr>
                   ))}
+                  {users.filter(u => {
+                    const matchesSearch = u.displayName?.toLowerCase().includes(searchTerm.toLowerCase()) || u.email.toLowerCase().includes(searchTerm.toLowerCase());
+                    const matchesRole = roleFilter === 'all' || u.role === roleFilter;
+                    return matchesSearch && matchesRole;
+                  }).length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500 dark:text-gray-400 italic">
+                        No users found matching your criteria.
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
