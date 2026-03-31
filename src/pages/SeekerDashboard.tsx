@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../App';
 import { Job, Application, Company, JobAlert, Experience, Education } from '../types';
-import { Briefcase, CheckCircle, Clock, XCircle, Search, MapPin, DollarSign, Loader2, User, FileText, Bookmark, ChevronRight, LayoutDashboard, Settings, Bell, Plus, Trash2, Send, Star, Camera, Upload, Save, CheckCircle2, AlertCircle, X, GraduationCap, Building2, Calendar as CalendarIcon, Pencil, Filter, ListFilter } from 'lucide-react';
+import { Briefcase, CheckCircle, Clock, XCircle, Search, MapPin, DollarSign, Loader2, User, FileText, Bookmark, ChevronRight, LayoutDashboard, Settings, Bell, Plus, Trash2, Send, Star, Camera, Upload, Save, CheckCircle2, AlertCircle, X, GraduationCap, Building2, Calendar as CalendarIcon, Pencil, Filter, ListFilter, Zap } from 'lucide-react';
 import SkillAutocomplete from '../components/SkillAutocomplete';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
@@ -14,6 +14,7 @@ import { applicationService } from '../services/applicationService';
 import { jobService } from '../services/jobService';
 import { companyService } from '../services/companyService';
 import { jobAlertService } from '../services/jobAlertService';
+import { recommendationService } from '../services/recommendationService';
 import { getJobDeadlineStatus } from '../lib/jobUtils';
 import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -31,6 +32,9 @@ export default function SeekerDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [selectedApplication, setSelectedApplication] = useState<Application | null>(null);
+  const [aiRecommendedJobIds, setAiRecommendedJobIds] = useState<string[]>([]);
+  const [isRecommending, setIsRecommending] = useState(false);
+  const [hasFetchedRecommendations, setHasFetchedRecommendations] = useState(false);
 
   const recentAppsCount = useMemo(() => {
     const sevenDaysAgo = new Date();
@@ -429,6 +433,35 @@ export default function SeekerDashboard() {
     };
   }, [user]);
 
+  // AI Recommendations logic
+  useEffect(() => {
+    const fetchRecommendations = async () => {
+      if (!profile || Object.keys(jobs).length === 0 || hasFetchedRecommendations || isRecommending) return;
+      
+      setIsRecommending(true);
+      try {
+        const activeJobs = Object.values(jobs).filter(j => 
+          j.status === 'active' && 
+          !applications.some(app => app.jobId === j.id)
+        );
+        
+        if (activeJobs.length > 0) {
+          const recommendedIds = await recommendationService.getRecommendedJobs(profile, activeJobs);
+          setAiRecommendedJobIds(recommendedIds);
+        }
+        setHasFetchedRecommendations(true);
+      } catch (error) {
+        console.error("Failed to fetch AI recommendations:", error);
+      } finally {
+        setIsRecommending(false);
+      }
+    };
+
+    if (activeTab === 'recommended' && !hasFetchedRecommendations) {
+      fetchRecommendations();
+    }
+  }, [activeTab, profile, jobs, applications, hasFetchedRecommendations, isRecommending]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'accepted': return 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-100 dark:border-green-900/30';
@@ -488,10 +521,20 @@ export default function SeekerDashboard() {
     setSelectedJob(job);
   };
 
-  const recommendedJobs = Object.values(jobs).filter(job => 
-    job.status === 'active' && 
-    !applications.some(app => app.jobId === job.id)
-  ).slice(0, 10);
+  const recommendedJobs = useMemo(() => {
+    if (aiRecommendedJobIds.length > 0) {
+      // Map IDs back to Job objects, maintaining AI's order
+      return aiRecommendedJobIds
+        .map(id => jobs[id])
+        .filter(job => job && job.status === 'active' && !applications.some(app => app.jobId === job.id));
+    }
+    
+    // Fallback to basic filtering if AI fails or hasn't run
+    return Object.values(jobs).filter(job => 
+      job.status === 'active' && 
+      !applications.some(app => app.jobId === job.id)
+    ).slice(0, 10);
+  }, [jobs, aiRecommendedJobIds, applications]);
 
   const savedJobs = profile?.savedJobs 
     ? Object.values(jobs).filter(job => profile.savedJobs!.includes(job.id))
@@ -741,7 +784,29 @@ export default function SeekerDashboard() {
 
         {activeTab === 'recommended' && (
           <div className="grid grid-cols-1 gap-8">
-            {recommendedJobs.length > 0 ? (
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-600 dark:text-blue-400">
+                  <Zap size={20} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900 dark:text-white">AI-Powered Recommendations</h2>
+                  <p className="text-sm text-gray-500 dark:text-zinc-400">Personalized matches based on your skills and experience.</p>
+                </div>
+              </div>
+              {isRecommending && (
+                <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 text-sm font-bold animate-pulse">
+                  <Loader2 size={16} className="animate-spin" />
+                  Analyzing matches...
+                </div>
+              )}
+            </div>
+
+            {isRecommending && recommendedJobs.length === 0 ? (
+              <div className="space-y-6">
+                {[1, 2, 3].map(i => <ApplicationCardSkeleton key={i} />)}
+              </div>
+            ) : recommendedJobs.length > 0 ? (
               recommendedJobs.map((job, index) => (
                 <motion.div
                   key={job.id}
