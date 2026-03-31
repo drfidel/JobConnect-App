@@ -1,3 +1,9 @@
 export const CONFIG = {
-  USE_MOCK: true, // Toggle this to switch between real Firebase and mock data
+  get USE_MOCK() {
+    // Default to true (Demo Mode) if not explicitly set to 'false'
+    return localStorage.getItem('use_mock_data') !== 'false';
+  },
+  set USE_MOCK(value: boolean) {
+    localStorage.setItem('use_mock_data', String(value));
+  }
 };

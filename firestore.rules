@@ -99,8 +99,11 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "akiyofidel@gmail.com" && request.auth.token.email_verified == true));
+        (
+          (request.auth.token.email == "akiyofidel@gmail.com" && request.auth.token.email_verified == true) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
     }
 
     function isEmployer() {
@@ -246,14 +249,14 @@ service cloud.firestore {
     }
 
     match /reviews/{reviewId} {
-      allow read: if resource.data.status == 'approved' || (isAuthenticated() && (isOwner(resource.data.seekerId) || isAdmin()));
+      allow read: if isAdmin() || resource.data.status == 'approved' || (isAuthenticated() && isOwner(resource.data.seekerId));
       allow create: if isAuthenticated() && isSeeker() && isValidReview(request.resource.data) && request.resource.data.status == 'pending';
       allow update: if isAuthenticated() && (
+        isAdmin() ||
         (isOwner(resource.data.seekerId) && isValidReview(request.resource.data) && (
           (resource.data.status == 'approved' && request.resource.data.status == 'flagged') || // Allow flagging
           (request.resource.data.status == 'pending') // Allow editing (resets to pending)
-        )) || 
-        isAdmin()
+        ))
       );
       allow delete: if isAuthenticated() && (isOwner(resource.data.seekerId) || isAdmin());
     }

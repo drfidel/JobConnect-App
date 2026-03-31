@@ -10,15 +10,29 @@ import {
   onSnapshot,
   serverTimestamp,
   getDocs,
-  getDoc
+  getDoc,
+  Timestamp
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 import { Review } from '../types';
+import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
+import { CONFIG } from '../config';
+import { MOCK_REVIEWS } from '../mockData';
 
 const REVIEWS_COLLECTION = 'reviews';
 
 export const reviewService = {
   async createReview(reviewData: Omit<Review, 'id' | 'createdAt' | 'status'>) {
+    if (CONFIG.USE_MOCK) {
+      const newReview = {
+        id: `mock_review_${Date.now()}`,
+        ...reviewData,
+        status: 'pending',
+        createdAt: Timestamp.now(),
+      } as Review;
+      MOCK_REVIEWS.push(newReview);
+      return newReview.id;
+    }
     try {
       const docRef = await addDoc(collection(db, REVIEWS_COLLECTION), {
         ...reviewData,
@@ -27,12 +41,18 @@ export const reviewService = {
       });
       return docRef.id;
     } catch (error) {
-      console.error('Error creating review:', error);
-      throw error;
+      handleFirestoreError(error, OperationType.WRITE, REVIEWS_COLLECTION);
     }
   },
 
   async updateReview(reviewId: string, updates: Partial<Review>) {
+    if (CONFIG.USE_MOCK) {
+      const index = MOCK_REVIEWS.findIndex(r => r.id === reviewId);
+      if (index !== -1) {
+        MOCK_REVIEWS[index] = { ...MOCK_REVIEWS[index], ...updates };
+      }
+      return;
+    }
     try {
       const docRef = doc(db, REVIEWS_COLLECTION, reviewId);
       await updateDoc(docRef, {
@@ -40,21 +60,31 @@ export const reviewService = {
         updatedAt: serverTimestamp(),
       });
     } catch (error) {
-      console.error('Error updating review:', error);
-      throw error;
+      handleFirestoreError(error, OperationType.WRITE, `${REVIEWS_COLLECTION}/${reviewId}`);
     }
   },
 
   async deleteReview(reviewId: string) {
+    if (CONFIG.USE_MOCK) {
+      const index = MOCK_REVIEWS.findIndex(r => r.id === reviewId);
+      if (index !== -1) {
+        MOCK_REVIEWS.splice(index, 1);
+      }
+      return;
+    }
     try {
       await deleteDoc(doc(db, REVIEWS_COLLECTION, reviewId));
     } catch (error) {
-      console.error('Error deleting review:', error);
-      throw error;
+      handleFirestoreError(error, OperationType.DELETE, `${REVIEWS_COLLECTION}/${reviewId}`);
     }
   },
 
   subscribeToCompanyReviews(companyId: string, callback: (reviews: Review[]) => void) {
+    if (CONFIG.USE_MOCK) {
+      const reviews = MOCK_REVIEWS.filter(r => r.companyId === companyId && r.status === 'approved');
+      setTimeout(() => callback(reviews), 500);
+      return () => {};
+    }
     const q = query(
       collection(db, REVIEWS_COLLECTION),
       where('companyId', '==', companyId),
@@ -69,11 +99,14 @@ export const reviewService = {
       })) as Review[];
       callback(reviews);
     }, (error) => {
-      console.error('Error fetching reviews:', error);
+      handleFirestoreError(error, OperationType.LIST, REVIEWS_COLLECTION);
     });
   },
 
   async getPendingReviews() {
+    if (CONFIG.USE_MOCK) {
+      return MOCK_REVIEWS.filter(r => r.status === 'pending');
+    }
     try {
       const q = query(
         collection(db, REVIEWS_COLLECTION),
@@ -86,8 +119,7 @@ export const reviewService = {
         ...doc.data()
       })) as Review[];
     } catch (error) {
-      console.error('Error getting pending reviews:', error);
-      throw error;
+      handleFirestoreError(error, OperationType.LIST, REVIEWS_COLLECTION);
     }
   },
 
@@ -111,6 +143,10 @@ export const reviewService = {
   },
 
   subscribeToAllReviews(callback: (reviews: Review[]) => void) {
+    if (CONFIG.USE_MOCK) {
+      setTimeout(() => callback([...MOCK_REVIEWS]), 500);
+      return () => {};
+    }
     const q = query(
       collection(db, REVIEWS_COLLECTION),
       orderBy('createdAt', 'desc')
@@ -123,7 +159,7 @@ export const reviewService = {
       })) as Review[];
       callback(reviews);
     }, (error) => {
-      console.error('Error fetching all reviews:', error);
+      handleFirestoreError(error, OperationType.LIST, REVIEWS_COLLECTION);
     });
   }
 };

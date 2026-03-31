@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { authService } from '../services/authService';
 import { CONFIG } from '../config';
-import { Mail, Lock, LogIn, AlertCircle, Loader2, User as UserIcon, Briefcase } from 'lucide-react';
+import { Mail, Lock, LogIn, AlertCircle, Loader2, User as UserIcon, Briefcase, ShieldCheck, Database, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -10,7 +11,15 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [isMockMode, setIsMockMode] = useState(CONFIG.USE_MOCK);
   const navigate = useNavigate();
+
+  const toggleMode = (mode: boolean) => {
+    CONFIG.USE_MOCK = mode;
+    setIsMockMode(mode);
+    // Reload to ensure all services re-initialize with the correct mode
+    window.location.reload();
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +64,32 @@ export default function Login() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-gray-50 dark:bg-black">
       <div className="max-w-md w-full space-y-8 bg-white dark:bg-zinc-900 p-10 rounded-3xl shadow-xl border border-gray-100 dark:border-zinc-800">
+        {/* Mode Switcher */}
+        <div className="flex p-1 bg-gray-100 dark:bg-zinc-800 rounded-2xl mb-8">
+          <button
+            onClick={() => toggleMode(true)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              isMockMode 
+                ? 'bg-white dark:bg-zinc-700 text-blue-600 dark:text-blue-400 shadow-sm' 
+                : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'
+            }`}
+          >
+            <Database size={14} />
+            Demo Mode
+          </button>
+          <button
+            onClick={() => toggleMode(false)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              !isMockMode 
+                ? 'bg-white dark:bg-zinc-700 text-orange-600 dark:text-orange-400 shadow-sm' 
+                : 'text-gray-500 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-300'
+            }`}
+          >
+            <Zap size={14} />
+            Live Mode
+          </button>
+        </div>
+
         <div className="text-center">
           <div className="mx-auto h-16 w-16 bg-blue-100 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 dark:text-blue-400 mb-6">
             <LogIn size={32} />
@@ -171,9 +206,16 @@ export default function Login() {
             </button>
           </div>
 
-          {CONFIG.USE_MOCK && (
+          {true && (
             <div className="mt-8 pt-6 border-t border-gray-100 dark:border-zinc-800">
-              <p className="text-xs font-black text-gray-400 dark:text-zinc-500 uppercase tracking-widest text-center mb-4">Demo Accounts</p>
+              <p className="text-xs font-black text-gray-400 dark:text-zinc-500 uppercase tracking-widest text-center mb-4">
+                {isMockMode ? 'Demo Accounts' : 'Quick Login (Requires Firebase Setup)'}
+              </p>
+              {!isMockMode && (
+                <p className="text-[10px] text-gray-400 dark:text-zinc-600 text-center mb-4 italic">
+                  Note: These accounts must be created in your Firebase Console with password "password" to work in Live Mode.
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
@@ -198,6 +240,14 @@ export default function Login() {
                 >
                   <Briefcase size={20} />
                   <span className="text-xs font-bold">Employer 2</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDemoLogin('admin@example.com')}
+                  className="flex flex-col items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-2xl hover:bg-red-100 dark:hover:bg-red-900/30 transition-all border border-red-100 dark:border-red-900/50"
+                >
+                  <ShieldCheck size={20} />
+                  <span className="text-xs font-bold">Admin</span>
                 </button>
               </div>
             </div>

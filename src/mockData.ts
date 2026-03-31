@@ -1,4 +1,4 @@
-import { Job, Company, Application, UserProfile, Notification, JobAlert } from './types';
+import { Job, Company, Application, UserProfile, Notification, JobAlert, Review } from './types';
 import { Timestamp } from 'firebase/firestore';
 
 const now = Timestamp.now();
@@ -279,6 +279,54 @@ export const MOCK_ALERTS: JobAlert[] = [
     location: 'Kampala',
     jobType: 'full-time',
     enabled: true,
+    createdAt: now
+  }
+];
+
+export const MOCK_REVIEWS: Review[] = [
+  {
+    id: 'rev1',
+    companyId: 'comp1',
+    companyName: 'TechFlow Uganda',
+    seekerId: 'seeker1',
+    authorName: 'John Seeker',
+    rating: 4,
+    workLifeBalance: 4,
+    management: 3,
+    culture: 5,
+    comment: 'Great place to work, very innovative!',
+    isAnonymous: false,
+    status: 'approved',
+    createdAt: now
+  },
+  {
+    id: 'rev2',
+    companyId: 'comp1',
+    companyName: 'TechFlow Uganda',
+    seekerId: 'seeker2',
+    authorName: 'Sarah Dev',
+    rating: 5,
+    workLifeBalance: 5,
+    management: 5,
+    culture: 5,
+    comment: 'The best tech company in Uganda.',
+    isAnonymous: false,
+    status: 'approved',
+    createdAt: now
+  },
+  {
+    id: 'rev3',
+    companyId: 'comp2',
+    companyName: 'Green Energy Solutions',
+    seekerId: 'seeker3',
+    authorName: 'Michael Employee',
+    rating: 3,
+    workLifeBalance: 2,
+    management: 3,
+    culture: 4,
+    comment: 'Good mission, but work-life balance is tough.',
+    isAnonymous: true,
+    status: 'pending',
     createdAt: now
   }
 ];
