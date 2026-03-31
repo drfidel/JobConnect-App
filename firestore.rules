@@ -72,7 +72,7 @@ service cloud.firestore {
     // Fields:
     //   - companyId: string (required)
     //   - seekerId: string (required)
-    //   - seekerName: string
+    //   - authorName: string
     //   - rating: number (required, 1-5)
     //   - workLifeBalance: number (1-5)
     //   - management: number (1-5)
