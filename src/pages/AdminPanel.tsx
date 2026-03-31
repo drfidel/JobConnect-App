@@ -140,8 +140,23 @@ export default function AdminPanel() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-blue-600 dark:text-blue-400" size={40} />
+      <div className="max-w-7xl mx-auto space-y-8">
+        <div className="bg-gray-900 dark:bg-gray-800 p-10 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 animate-pulse">
+          <div className="space-y-4">
+            <div className="h-8 w-64 bg-white/10 rounded-lg" />
+            <div className="h-4 w-48 bg-white/10 rounded-lg" />
+          </div>
+          <div className="flex gap-4">
+            <div className="h-16 w-24 bg-white/10 rounded-2xl" />
+            <div className="h-16 w-24 bg-white/10 rounded-2xl" />
+          </div>
+        </div>
+        <div className="h-12 w-96 bg-gray-100 dark:bg-gray-800 rounded-2xl animate-pulse" />
+        <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden p-6 space-y-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="h-16 w-full bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse" />
+          ))}
+        </div>
       </div>
     );
   }

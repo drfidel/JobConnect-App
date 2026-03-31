@@ -19,6 +19,7 @@ import {
 import { CATEGORIES } from '../constants';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
+import { JobCardSkeleton, ApplicationCardSkeleton } from '../components/Skeleton';
 import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
 import { companyService } from '../services/companyService';
@@ -429,8 +430,22 @@ export default function EmployerDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-blue-600 dark:text-blue-400" size={40} />
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-gray-900 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-gray-800">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-gray-50 dark:bg-zinc-800 rounded-lg animate-pulse" />
+            <div className="h-4 w-48 bg-gray-50 dark:bg-zinc-800 rounded-lg animate-pulse" />
+          </div>
+          <div className="h-12 w-48 bg-gray-50 dark:bg-zinc-800 rounded-xl animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="bg-white dark:bg-gray-900 p-6 rounded-3xl border border-gray-100 dark:border-gray-800 h-32 animate-pulse" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 gap-6">
+          {[1, 2, 3].map(i => <JobCardSkeleton key={i} />)}
+        </div>
       </div>
     );
   }

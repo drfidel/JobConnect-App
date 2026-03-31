@@ -17,6 +17,7 @@ import { jobAlertService } from '../services/jobAlertService';
 import { getJobDeadlineStatus } from '../lib/jobUtils';
 import { collection, onSnapshot, addDoc, serverTimestamp, updateDoc, doc, deleteDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { ApplicationCardSkeleton } from '../components/Skeleton';
 
 export default function SeekerDashboard() {
   const { user, profile } = useAuth();
@@ -507,8 +508,17 @@ export default function SeekerDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-blue-600" size={40} />
+      <div className="max-w-6xl mx-auto space-y-8">
+        <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl shadow-sm border border-gray-100 dark:border-zinc-800 flex flex-col md:flex-row md:items-center gap-8">
+          <div className="w-24 h-24 rounded-2xl bg-gray-50 dark:bg-zinc-800 animate-pulse" />
+          <div className="flex-grow space-y-4">
+            <div className="h-8 w-64 bg-gray-50 dark:bg-zinc-800 rounded-lg animate-pulse" />
+            <div className="h-4 w-48 bg-gray-50 dark:bg-zinc-800 rounded-lg animate-pulse" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 gap-6">
+          {[1, 2, 3].map(i => <ApplicationCardSkeleton key={i} />)}
+        </div>
       </div>
     );
   }

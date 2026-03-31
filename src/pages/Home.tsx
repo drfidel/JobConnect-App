@@ -12,6 +12,7 @@ import { companyService } from '../services/companyService';
 import { getJobDeadlineStatus } from '../lib/jobUtils';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { JobCardSkeleton } from '../components/Skeleton';
 
 export default function Home() {
   const { user, profile } = useAuth();
@@ -438,9 +439,8 @@ export default function Home() {
           </div>
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm">
-              <Loader2 className="animate-spin text-blue-600 dark:text-blue-400 mb-4" size={40} />
-              <p className="text-gray-500 dark:text-gray-400 font-medium">Fetching the latest opportunities...</p>
+            <div className="grid grid-cols-1 gap-4">
+              {[1, 2, 3, 4, 5].map(i => <JobCardSkeleton key={i} />)}
             </div>
           ) : displayJobs.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">

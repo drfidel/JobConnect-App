@@ -12,6 +12,7 @@ import { applicationService } from '../services/applicationService';
 import { notificationService } from '../services/notificationService';
 import { profileService } from '../services/profileService';
 import { getJobDeadlineStatus } from '../lib/jobUtils';
+import { JobDetailsSkeleton } from '../components/Skeleton';
 
 export default function JobDetails() {
   const { id } = useParams<{ id: string }>();
@@ -136,11 +137,7 @@ export default function JobDetails() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="animate-spin text-blue-600" size={40} />
-      </div>
-    );
+    return <JobDetailsSkeleton />;
   }
 
   if (!job) return null;
