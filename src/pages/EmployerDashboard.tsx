@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth, useDarkMode } from '../App';
 import { Job, Application, Company, UserProfile } from '../types';
-import { Plus, Briefcase, Users, Settings, Trash2, Edit2, CheckCircle, XCircle, Loader2, MapPin, DollarSign, Clock, LayoutDashboard, Building2, ChevronRight, Eye, Calendar, Search, Star, LayoutGrid, List, Activity, BarChart3, PieChart as PieChartIcon, TrendingUp, MessageSquare, Send, CheckSquare, Square, Archive } from 'lucide-react';
+import { Plus, Briefcase, Users, Settings, Trash2, Edit2, CheckCircle, XCircle, Loader2, MapPin, DollarSign, Clock, LayoutDashboard, Building2, ChevronRight, Eye, Calendar, Search, Star, LayoutGrid, List, Activity, BarChart3, PieChart as PieChartIcon, TrendingUp, MessageSquare, Send, CheckSquare, Square, Archive, Zap } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -466,12 +466,20 @@ export default function EmployerDashboard() {
             <Building2 size={20} /> Create Company Profile
           </button>
         ) : (
-          <button 
-            onClick={() => setIsAddingJob(true)}
-            className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
-          >
-            <Plus size={20} /> Post a New Job
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link 
+              to="/pricing"
+              className="flex items-center justify-center gap-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 px-6 py-3 rounded-xl font-bold transition-all hover:bg-gray-200 dark:hover:bg-gray-700"
+            >
+              <Zap size={20} className="text-blue-600 dark:text-blue-400" /> View Pricing
+            </Link>
+            <button 
+              onClick={() => setIsAddingJob(true)}
+              className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
+            >
+              <Plus size={20} /> Post a New Job
+            </button>
+          </div>
         )}
       </div>
       

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Briefcase, User, LogOut, Menu, X, Shield, Sun, Moon, Settings, LayoutDashboard, ChevronDown } from 'lucide-react';
+import { Briefcase, User, LogOut, Menu, X, Shield, Sun, Moon, Settings, LayoutDashboard, ChevronDown, Zap } from 'lucide-react';
 import { useAuth, useDarkMode } from '../App';
 import { authService } from '../services/authService';
 import NotificationCenter from './NotificationCenter';
@@ -46,6 +46,7 @@ export default function Navbar() {
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
             <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Find Jobs</Link>
+            <Link to="/pricing" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Pricing</Link>
             {user ? (
               <>
                 <Link to="/dashboard" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Dashboard</Link>
@@ -166,6 +167,10 @@ export default function Navbar() {
             <Link to="/" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
               <Briefcase size={18} />
               <span>Find Jobs</span>
+            </Link>
+            <Link to="/pricing" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+              <Zap size={18} />
+              <span>Pricing</span>
             </Link>
             {user ? (
               <>

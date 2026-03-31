@@ -49,7 +49,7 @@ export default function Footer() {
               <li><Link to="/dashboard" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Post a Job</Link></li>
               <li><Link to="/dashboard" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Browse Talent</Link></li>
               <li><Link to="/dashboard" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Employer Branding</Link></li>
-              <li><Link to="/dashboard" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing Plans</Link></li>
+              <li><Link to="/pricing" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Pricing Plans</Link></li>
             </ul>
           </div>
 
