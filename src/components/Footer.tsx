@@ -77,8 +77,8 @@ export default function Footer() {
             © {new Date().getFullYear()} Uganda Medical Association Job Portal. All rights reserved.
           </p>
           <div className="flex items-center space-x-6 text-sm">
-            <a href="#" className="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</a>
-            <a href="#" className="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</a>
+            <Link to="/privacy" className="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Terms of Service</Link>
             <a href="#" className="text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Cookie Policy</a>
           </div>
         </div>
