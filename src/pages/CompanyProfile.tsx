@@ -10,16 +10,20 @@ import { jobService } from '../services/jobService';
 import { reviewService } from '../services/reviewService';
 import ReviewForm from '../components/ReviewForm';
 import ReviewList from '../components/ReviewList';
+import ContactCompanyModal from '../components/ContactCompanyModal';
+import { useNavigate } from 'react-router-dom';
 
 export default function CompanyProfile() {
   const { id } = useParams<{ id: string }>();
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const [company, setCompany] = useState<Company | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'jobs' | 'reviews'>('jobs');
   const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -309,17 +313,40 @@ export default function CompanyProfile() {
               </div>
             </div>
 
-            <div className="mt-8 pt-8 border-t border-gray-50 dark:border-zinc-800">
+            <div className="mt-8 pt-8 border-t border-gray-50 dark:border-zinc-800 space-y-4">
               <h4 className="font-bold text-gray-900 dark:text-white mb-4">Share Company</h4>
               <div className="flex gap-2">
                 <button className="flex-grow py-2.5 bg-gray-50 dark:bg-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-400 text-sm font-bold rounded-xl transition-all border border-gray-100 dark:border-zinc-700">
                   Copy Link
                 </button>
               </div>
+              
+              {user?.uid !== company.ownerId && (
+                <button 
+                  onClick={() => {
+                    if (!user) {
+                      navigate('/login', { state: { from: `/company/${id}` } });
+                      return;
+                    }
+                    setIsContactModalOpen(true);
+                  }}
+                  className="w-full py-4 px-6 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-2xl shadow-lg shadow-blue-500/20 transition-all flex items-center justify-center gap-2"
+                >
+                  <MessageSquare size={20} />
+                  Contact Us
+                </button>
+              )}
             </div>
           </div>
         </aside>
       </div>
+
+      <ContactCompanyModal 
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+        companyName={company.name}
+        receiverId={company.ownerId}
+      />
     </div>
   );
 }

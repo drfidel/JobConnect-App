@@ -271,10 +271,10 @@ export default function EmployerDashboard() {
       const app = applications.find(a => a.seekerId === selectedApplicant.uid);
       if (app) {
         await messageService.sendMessage(
-          app.id,
           user.uid,
           selectedApplicant.uid,
-          messageContent.trim()
+          messageContent.trim(),
+          app.id
         );
         setMessageContent('');
       }

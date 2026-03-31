@@ -91,7 +91,7 @@ export interface JobAlert {
 
 export interface Message {
   id: string;
-  applicationId: string;
+  applicationId?: string;
   senderId: string;
   receiverId: string;
   content: string;

@@ -182,9 +182,13 @@ service cloud.firestore {
     }
 
     function isValidMessage(data) {
-      return hasRequiredFields(['applicationId', 'senderId', 'receiverId', 'content']) &&
+      return hasRequiredFields(['senderId', 'receiverId', 'content', 'createdAt']) &&
+             hasOnlyAllowedFields(['senderId', 'receiverId', 'content', 'createdAt', 'applicationId']) &&
              data.senderId == request.auth.uid &&
-             data.content is string && data.content.size() < 5000;
+             data.receiverId is string &&
+             data.content is string && data.content.size() < 5000 &&
+             data.createdAt == request.time &&
+             (data.applicationId == null || data.applicationId is string);
     }
 
     function isValidReview(data) {
