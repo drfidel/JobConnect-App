@@ -22,6 +22,8 @@ export default function AdminPanel() {
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'seeker' | 'employer' | 'admin'>('all');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [flaggingReviewId, setFlaggingReviewId] = useState<string | null>(null);
+  const [adminFlagReason, setAdminFlagReason] = useState('');
 
   useEffect(() => {
     if (profile?.role !== 'admin') return;
@@ -125,6 +127,17 @@ export default function AdminPanel() {
       } catch (err) {
         console.error("Error deleting review:", err);
       }
+    }
+  };
+
+  const handleFlagReview = async (reviewId: string) => {
+    if (!adminFlagReason.trim()) return;
+    try {
+      await reviewService.flagReview(reviewId, adminFlagReason);
+      setFlaggingReviewId(null);
+      setAdminFlagReason('');
+    } catch (err) {
+      console.error("Error flagging review:", err);
     }
   };
 
@@ -509,6 +522,15 @@ export default function AdminPanel() {
                               <XCircle size={18} />
                             </button>
                           )}
+                          {review.status !== 'flagged' && (
+                            <button 
+                              onClick={() => setFlaggingReviewId(review.id)}
+                              className="p-2 text-orange-600 dark:text-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 rounded-lg transition-all" 
+                              title="Flag Review"
+                            >
+                              <Flag size={18} />
+                            </button>
+                          )}
                           <button 
                             onClick={() => handleDeleteReview(review.id)}
                             className="p-2 text-gray-400 dark:text-gray-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all" 
@@ -530,6 +552,52 @@ export default function AdminPanel() {
                 </tbody>
               </table>
             </div>
+
+            {/* Admin Flag Modal */}
+            <AnimatePresence>
+              {flaggingReviewId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-white dark:bg-zinc-900 rounded-3xl p-8 max-w-md w-full shadow-2xl border border-gray-100 dark:border-zinc-800"
+                  >
+                    <div className="flex items-center gap-3 text-orange-600 dark:text-orange-400 mb-4">
+                      <Flag size={24} />
+                      <h4 className="text-xl font-bold">Flag Review</h4>
+                    </div>
+                    <p className="text-gray-600 dark:text-zinc-400 mb-6">
+                      Please provide a reason for flagging this review. This will mark the review as flagged and notify moderators.
+                    </p>
+                    <textarea
+                      value={adminFlagReason}
+                      onChange={(e) => setAdminFlagReason(e.target.value)}
+                      placeholder="Reason for flagging (e.g., inappropriate content, spam)..."
+                      className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-100 dark:border-zinc-700 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none transition-all text-sm min-h-[120px] text-gray-900 dark:text-white mb-6"
+                    />
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => {
+                          setFlaggingReviewId(null);
+                          setAdminFlagReason('');
+                        }}
+                        className="flex-grow py-3 bg-gray-100 dark:bg-zinc-800 hover:bg-gray-200 dark:hover:bg-zinc-700 text-gray-600 dark:text-zinc-400 font-bold rounded-xl transition-all"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => handleFlagReview(flaggingReviewId)}
+                        disabled={!adminFlagReason.trim()}
+                        className="flex-grow py-3 bg-orange-600 hover:bg-orange-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                      >
+                        Confirm Flag
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
