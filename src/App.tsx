@@ -19,6 +19,8 @@ import ForgotPassword from './pages/ForgotPassword';
 import Pricing from './pages/Pricing';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import CareerAdvice from './pages/CareerAdvice';
+import ArticleDetails from './pages/ArticleDetails';
 
 interface AuthContextType {
   user: User | null;
@@ -117,6 +119,8 @@ export default function App() {
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/privacy" element={<PrivacyPolicy />} />
                   <Route path="/terms" element={<TermsOfService />} />
+                  <Route path="/career-advice" element={<CareerAdvice />} />
+                  <Route path="/career-advice/:id" element={<ArticleDetails />} />
                   
                   {/* Protected Routes */}
                   <Route 

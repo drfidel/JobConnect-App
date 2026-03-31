@@ -38,7 +38,7 @@ export default function Footer() {
             <ul className="space-y-4">
               <li><Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Browse Jobs</Link></li>
               <li><Link to="/dashboard" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">My Applications</Link></li>
-              <li><Link to="/profile" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Career Advice</Link></li>
+              <li><Link to="/career-advice" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Career Advice</Link></li>
               <li><Link to="/" className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">Job Alerts</Link></li>
             </ul>
           </div>
