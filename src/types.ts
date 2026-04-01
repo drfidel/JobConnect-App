@@ -117,8 +117,12 @@ export interface Article {
   author: string;
   date: string;
   category: string;
-  imageUrl: string;
+  image: string;
+  imageUrl: string; // Keep for backward compatibility with mock data
   readTime: string;
+  status: 'draft' | 'published';
+  createdAt?: any;
+  updatedAt?: any;
 }
 
 export interface Review {

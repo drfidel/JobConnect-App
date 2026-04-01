@@ -45,12 +45,11 @@ export default function Navbar() {
 
           {/* Desktop Menu */}
           <div className="hidden md:flex items-center space-x-8">
-            <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Find Jobs</Link>
-            <Link to="/career-advice" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Career Advice</Link>
-            <Link to="/pricing" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Pricing</Link>
             {user ? (
               <>
+                <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Find Jobs</Link>
                 <Link to="/dashboard" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Dashboard</Link>
+                <Link to="/profile" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Profile</Link>
                 {profile?.role === 'admin' && (
                   <Link to="/admin" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors flex items-center gap-1">
                     <Shield size={16} /> Admin
@@ -132,18 +131,22 @@ export default function Navbar() {
                 </div>
               </>
             ) : (
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={toggleDarkMode}
-                  className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-                </button>
-                <Link to="/login" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-4 py-2 transition-colors">Login</Link>
-                <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg">
-                  Get Started
-                </Link>
-              </div>
+              <>
+                <Link to="/" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Find Jobs</Link>
+                <Link to="/career-advice" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium transition-colors">Career Advice</Link>
+                <div className="flex items-center space-x-4">
+                  <button
+                    onClick={toggleDarkMode}
+                    className="p-2 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                  >
+                    {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                  </button>
+                  <Link to="/login" className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-4 py-2 transition-colors">Login</Link>
+                  <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-md hover:shadow-lg">
+                    Register
+                  </Link>
+                </div>
+              </>
             )}
           </div>
 
@@ -165,20 +168,12 @@ export default function Navbar() {
         {/* Mobile Menu */}
         {isOpen && (
           <div className="md:hidden py-4 border-t border-gray-50 dark:border-gray-800 space-y-4 animate-in slide-in-from-top duration-200">
-            <Link to="/" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
-              <Briefcase size={18} />
-              <span>Find Jobs</span>
-            </Link>
-            <Link to="/career-advice" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
-              <BookOpen size={18} />
-              <span>Career Advice</span>
-            </Link>
-            <Link to="/pricing" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
-              <Zap size={18} />
-              <span>Pricing</span>
-            </Link>
             {user ? (
               <>
+                <Link to="/" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                  <Briefcase size={18} />
+                  <span>Find Jobs</span>
+                </Link>
                 <Link to="/dashboard" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
                   <LayoutDashboard size={18} />
                   <span>Dashboard</span>
@@ -206,10 +201,20 @@ export default function Navbar() {
                 </button>
               </>
             ) : (
-              <div className="space-y-2 pt-2">
-                <Link to="/login" className="block w-full text-center py-3 text-gray-600 dark:text-gray-300 font-medium border border-gray-200 dark:border-gray-700 rounded-xl" onClick={() => setIsOpen(false)}>Login</Link>
-                <Link to="/register" className="block w-full text-center py-3 bg-blue-600 text-white font-semibold rounded-xl" onClick={() => setIsOpen(false)}>Register</Link>
-              </div>
+              <>
+                <Link to="/" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                  <Briefcase size={18} />
+                  <span>Find Jobs</span>
+                </Link>
+                <Link to="/career-advice" className="flex items-center space-x-2 text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium px-2" onClick={() => setIsOpen(false)}>
+                  <BookOpen size={18} />
+                  <span>Career Advice</span>
+                </Link>
+                <div className="space-y-2 pt-2">
+                  <Link to="/login" className="block w-full text-center py-3 text-gray-600 dark:text-gray-300 font-medium border border-gray-200 dark:border-gray-700 rounded-xl" onClick={() => setIsOpen(false)}>Login</Link>
+                  <Link to="/register" className="block w-full text-center py-3 bg-blue-600 text-white font-semibold rounded-xl" onClick={() => setIsOpen(false)}>Register</Link>
+                </div>
+              </>
             )}
           </div>
         )}

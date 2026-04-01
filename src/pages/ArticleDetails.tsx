@@ -1,18 +1,77 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, User, Calendar, Share2, Facebook, Twitter, Linkedin, Bookmark } from 'lucide-react';
-import { articles } from '../data/articles';
+import { articles as mockArticles } from '../data/articles';
+import { articleService } from '../services/articleService';
+import { Article } from '../types';
 import ReactMarkdown from 'react-markdown';
 import { motion } from 'motion/react';
 
 export default function ArticleDetails() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const article = articles.find(a => a.id === id);
+  const [article, setArticle] = useState<Article | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    let isMounted = true;
+    const fetchArticle = async () => {
+      if (!id) return;
+      try {
+        setIsLoading(true);
+        // Try Firestore first
+        const data = await articleService.getArticleById(id).catch(err => {
+          console.error('Firestore getArticleById failed:', err);
+          return null;
+        });
+        
+        if (!isMounted) return;
+
+        if (data) {
+          setArticle(data);
+        } else {
+          // Try mock data
+          const mock = mockArticles.find(a => a.id === id);
+          if (mock) {
+            setArticle({ ...mock, image: mock.imageUrl, status: 'published' } as Article);
+          }
+        }
+        
+        // Fetch related
+        const all = await articleService.getAllArticles().catch(err => {
+          console.error('Firestore getAllArticles failed:', err);
+          return [];
+        });
+        
+        if (!isMounted) return;
+
+        const filtered = all.filter(a => a.id !== id).slice(0, 2);
+        if (filtered.length === 0) {
+          setRelatedArticles(mockArticles.filter(a => a.id !== id).slice(0, 2).map(m => ({ ...m, image: m.imageUrl } as Article)));
+        } else {
+          setRelatedArticles(filtered);
+        }
+      } catch (error) {
+        console.error('Error fetching article:', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    fetchArticle();
+    return () => { isMounted = false; };
   }, [id]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   if (!article) {
     return (
@@ -83,7 +142,7 @@ export default function ArticleDetails() {
         className="mb-16 rounded-3xl overflow-hidden shadow-2xl"
       >
         <img 
-          src={article.imageUrl} 
+          src={article.image || article.imageUrl} 
           alt={article.title}
           className="w-full h-auto object-cover max-h-[500px]"
           referrerPolicy="no-referrer"
@@ -127,7 +186,7 @@ export default function ArticleDetails() {
       <div className="mt-24">
         <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-12">More from Career Advice</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {articles.filter(a => a.id !== id).slice(0, 2).map(related => (
+          {relatedArticles.map(related => (
             <Link 
               key={related.id} 
               to={`/career-advice/${related.id}`}
@@ -135,7 +194,7 @@ export default function ArticleDetails() {
             >
               <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden">
                 <img 
-                  src={related.imageUrl} 
+                  src={related.image || related.imageUrl} 
                   alt={related.title}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   referrerPolicy="no-referrer"

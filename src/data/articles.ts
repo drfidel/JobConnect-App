@@ -31,8 +31,10 @@ Your resume is a living document. Tailor it for every single application to show
     author: 'Sarah Jenkins',
     date: 'March 15, 2024',
     category: 'Resume Tips',
+    image: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=80&w=800',
     imageUrl: 'https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=80&w=800',
-    readTime: '5 min read'
+    readTime: '5 min read',
+    status: 'published'
   },
   {
     id: '2',
@@ -66,8 +68,10 @@ Prepare 5-7 "stories" that you can adapt to different questions. Practice saying
     author: 'Michael Chen',
     date: 'February 28, 2024',
     category: 'Interview Prep',
+    image: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=800',
     imageUrl: 'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=800',
-    readTime: '7 min read'
+    readTime: '7 min read',
+    status: 'published'
   },
   {
     id: '3',
@@ -96,8 +100,10 @@ The magic is in the follow-up. After meeting someone, send a personalized thank-
     author: 'Elena Rodriguez',
     date: 'March 10, 2024',
     category: 'Networking',
+    image: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800',
     imageUrl: 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&q=80&w=800',
-    readTime: '6 min read'
+    readTime: '6 min read',
+    status: 'published'
   },
   {
     id: '4',
@@ -126,7 +132,154 @@ Join Slack groups, attend meetups, and contribute to open source. The tech commu
     author: 'David Wilson',
     date: 'March 22, 2024',
     category: 'Career Change',
+    image: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800',
     imageUrl: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800',
-    readTime: '8 min read'
+    readTime: '8 min read',
+    status: 'published'
+  },
+  {
+    id: '5',
+    title: 'Salary Negotiation: How to Ask for What You\'re Worth',
+    excerpt: 'Negotiating your salary can be intimidating, but it\'s a crucial skill for long-term career growth. Learn how to prepare and execute a successful negotiation.',
+    content: `
+# Salary Negotiation: How to Ask for What You're Worth
+
+Negotiating your salary is one of the most important conversations you'll have in your professional life. Yet, many people avoid it out of fear or lack of preparation. Here's how to approach it with confidence.
+
+## 1. Do Your Research
+Knowledge is power. Use sites like Glassdoor, Payscale, and LinkedIn Salary to understand the market rate for your role, experience level, and location. Aim for a range rather than a single number.
+
+## 2. Know Your Value
+Beyond market rates, what unique value do you bring? Highlight your specific achievements, specialized skills, and the impact you've had in previous roles.
+
+## 3. Timing is Everything
+The best time to negotiate is after you've received an offer but before you've signed it. For current employees, the best time is often during a performance review or after successfully completing a major project.
+
+## 4. Practice Your Pitch
+Don't wing it. Write down your key points and practice saying them out loud. Focus on being professional, collaborative, and firm but flexible.
+
+## 5. Consider the Whole Package
+Salary is just one part of compensation. If the base salary isn't negotiable, consider asking for other benefits like:
+- Performance bonuses
+- Extra vacation time
+- Flexible working hours
+- Professional development budget
+- Stock options
+
+## Conclusion
+Remember, a negotiation is a conversation, not a confrontation. By being prepared and professional, you're not just asking for more money; you're demonstrating your value and your commitment to the role.
+    `,
+    author: 'Robert Taylor',
+    date: 'March 25, 2024',
+    category: 'Salary & Benefits',
+    image: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&q=80&w=800',
+    readTime: '6 min read',
+    status: 'published'
+  },
+  {
+    id: '6',
+    title: 'Remote Work Success: Tips for Staying Productive and Connected',
+    excerpt: 'Remote work is here to stay. Discover the best practices for maintaining productivity, setting boundaries, and staying connected with your team.',
+    content: `
+# Remote Work Success: Tips for Staying Productive and Connected
+
+Remote work offers incredible flexibility, but it also comes with unique challenges. Here's how to thrive in a remote or hybrid environment.
+
+## 1. Create a Dedicated Workspace
+If possible, have a specific area in your home that is only for work. This helps your brain switch into "work mode" and makes it easier to "leave the office" at the end of the day.
+
+## 2. Establish a Routine
+Start and end your day at the same time. Have a morning ritual that signals the start of your workday, whether it's a walk, a cup of coffee, or getting dressed as if you were going to an office.
+
+## 3. Set Clear Boundaries
+It's easy for work and life to blur when you work from home. Communicate your working hours to your team and your family, and stick to them. Avoid checking emails after hours.
+
+## 4. Over-Communicate
+In a remote setting, you can't rely on "water cooler" chats. Be proactive in updating your manager and team on your progress. Use video calls for complex discussions to maintain a personal connection.
+
+## 5. Take Regular Breaks
+Don't stay glued to your screen all day. Use the Pomodoro technique or simply step away for 5-10 minutes every hour to stretch, hydrate, and clear your mind.
+
+## Conclusion
+Remote work success is about discipline and intentionality. By setting up the right environment and habits, you can enjoy the benefits of flexibility without sacrificing your productivity or well-being.
+    `,
+    author: 'Jessica Lee',
+    date: 'March 28, 2024',
+    category: 'Remote Work',
+    image: 'https://images.unsplash.com/photo-1587560699334-cc4ff634909a?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1587560699334-cc4ff634909a?auto=format&fit=crop&q=80&w=800',
+    readTime: '5 min read',
+    status: 'published'
+  },
+  {
+    id: '7',
+    title: 'Building Your Personal Brand: A Guide for Modern Job Seekers',
+    excerpt: 'In a digital world, your personal brand is your reputation. Learn how to define and showcase your unique value to attract the right opportunities.',
+    content: `
+# Building Your Personal Brand: A Guide for Modern Job Seekers
+
+Your personal brand is what people say about you when you're not in the room. For job seekers, it's a powerful tool to differentiate yourself and attract the right employers.
+
+## 1. Define Your Unique Value Proposition
+What makes you different? What problems do you solve better than anyone else? Identify your core strengths, values, and the unique perspective you bring to your field.
+
+## 2. Audit Your Online Presence
+Google yourself. What do people see? Ensure your LinkedIn profile is up-to-date and professional. Clean up or privatize any social media accounts that don't align with your professional image.
+
+## 3. Share Your Expertise
+Don't just be a consumer of content; be a creator. Write articles, share insights on LinkedIn, or start a professional blog. This establishes you as a thought leader in your industry.
+
+## 4. Be Consistent
+Your brand should be consistent across all platforms—from your resume and LinkedIn profile to how you present yourself in interviews. Use a consistent tone of voice and visual style.
+
+## 5. Network with Intention
+Connect with people in your industry, join professional groups, and attend relevant events. Your network is an extension of your brand; the people you associate with say a lot about who you are professionally.
+
+## Conclusion
+Building a personal brand takes time and effort, but the payoff is significant. A strong brand makes you more visible, more credible, and more attractive to the employers you actually want to work for.
+    `,
+    author: 'Amanda Garcia',
+    date: 'March 30, 2024',
+    category: 'Personal Branding',
+    image: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1493612276216-ee3925520721?auto=format&fit=crop&q=80&w=800',
+    readTime: '7 min read',
+    status: 'published'
+  },
+  {
+    id: '8',
+    title: 'The Importance of Soft Skills in the Modern Workplace',
+    excerpt: 'While technical skills get you the interview, soft skills get you the job—and help you keep it. Discover the most in-demand soft skills for 2024.',
+    content: `
+# The Importance of Soft Skills in the Modern Workplace
+
+In an era of AI and automation, "human" skills are more valuable than ever. These "soft skills" are the interpersonal attributes you need to succeed in any professional environment.
+
+## 1. Communication
+This isn't just about speaking; it's about active listening, clear writing, and the ability to explain complex ideas simply. Good communicators build trust and prevent misunderstandings.
+
+## 2. Emotional Intelligence (EQ)
+EQ is the ability to understand and manage your own emotions, as well as recognize and influence the emotions of others. It's crucial for leadership, teamwork, and conflict resolution.
+
+## 3. Adaptability
+The modern workplace changes fast. Employers value people who can pivot quickly, learn new tools, and stay positive in the face of uncertainty.
+
+## 4. Problem-Solving
+Beyond identifying problems, you need to be able to analyze them and propose creative, practical solutions. This requires critical thinking and a "can-do" attitude.
+
+## 5. Collaboration
+Most work today is done in teams. Being a "team player" means being reliable, supportive, and able to work effectively with people from diverse backgrounds and perspectives.
+
+## Conclusion
+Technical skills (hard skills) are the foundation of your career, but soft skills are the fuel that drives your growth. By intentionally developing these interpersonal attributes, you'll become a more effective professional and a more valuable asset to any organization.
+    `,
+    author: 'Kevin Adams',
+    date: 'March 31, 2024',
+    category: 'Soft Skills',
+    image: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=800',
+    readTime: '6 min read',
+    status: 'published'
   }
 ];

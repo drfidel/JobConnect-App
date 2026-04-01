@@ -14,10 +14,11 @@ import {
   Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Application } from '../types';
+import { Application, Job, UserProfile, Company } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/firestoreUtils';
 import { CONFIG } from '../config';
-import { MOCK_APPLICATIONS } from '../mockData';
+import { MOCK_APPLICATIONS, MOCK_JOBS, MOCK_PROFILES, MOCK_COMPANIES } from '../mockData';
+import { emailService } from './emailService';
 
 const COLLECTION_NAME = 'applications';
 
@@ -106,21 +107,87 @@ export const applicationService = {
     }
   },
 
+  getApplicationById: async (appId: string): Promise<Application | null> => {
+    if (CONFIG.USE_MOCK) {
+      return MOCK_APPLICATIONS.find(a => a.id === appId) || null;
+    }
+    const docRef = doc(db, COLLECTION_NAME, appId);
+    try {
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return { id: docSnap.id, ...docSnap.data() } as Application;
+      }
+      return null;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, `${COLLECTION_NAME}/${appId}`);
+      return null;
+    }
+  },
+
   updateApplicationStatus: async (appId: string, status: Application['status']) => {
     if (CONFIG.USE_MOCK) {
       const index = MOCK_APPLICATIONS.findIndex(a => a.id === appId);
       if (index !== -1) {
-        MOCK_APPLICATIONS[index].status = status;
-        MOCK_APPLICATIONS[index].updatedAt = Timestamp.now();
+        const app = MOCK_APPLICATIONS[index];
+        app.status = status;
+        app.updatedAt = Timestamp.now();
+
+        // Send mock email notification
+        const job = MOCK_JOBS.find(j => j.id === app.jobId);
+        const seeker = MOCK_PROFILES.find(p => p.uid === app.seekerId);
+        const company = MOCK_COMPANIES.find(c => c.id === job?.companyId);
+
+        if (seeker && job && company) {
+          emailService.sendApplicationStatusUpdate(
+            seeker.email,
+            seeker.displayName || 'Applicant',
+            job.title,
+            company.name,
+            status
+          );
+        }
       }
       return;
     }
     const docRef = doc(db, COLLECTION_NAME, appId);
     try {
-      return await updateDoc(docRef, { 
+      await updateDoc(docRef, { 
         status,
         updatedAt: serverTimestamp()
       });
+
+      // Fetch details for email notification
+      const appSnap = await getDoc(docRef);
+      if (appSnap.exists()) {
+        const app = { id: appSnap.id, ...appSnap.data() } as Application;
+        
+        // Get Job
+        const jobSnap = await getDoc(doc(db, 'jobs', app.jobId));
+        if (jobSnap.exists()) {
+          const job = { id: jobSnap.id, ...jobSnap.data() } as Job;
+          
+          // Get Seeker Profile
+          const seekerSnap = await getDoc(doc(db, 'users', app.seekerId));
+          if (seekerSnap.exists()) {
+            const seeker = { uid: seekerSnap.id, ...seekerSnap.data() } as UserProfile;
+            
+            // Get Company
+            const companySnap = await getDoc(doc(db, 'companies', job.companyId));
+            if (companySnap.exists()) {
+              const company = { id: companySnap.id, ...companySnap.data() } as Company;
+              
+              // Send Email
+              await emailService.sendApplicationStatusUpdate(
+                seeker.email,
+                seeker.displayName || 'Applicant',
+                job.title,
+                company.name,
+                status
+              );
+            }
+          }
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `${COLLECTION_NAME}/${appId}`);
     }

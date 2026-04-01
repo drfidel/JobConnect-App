@@ -138,6 +138,26 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["companyId", "seekerId", "rating", "comment", "status"]
+    },
+    "Article": {
+      "title": "Article",
+      "description": "A career advice article posted by an admin",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" },
+        "author": { "type": "string" },
+        "date": { "type": "string" },
+        "readTime": { "type": "string" },
+        "image": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["draft", "published"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "excerpt", "content", "category", "author", "date", "readTime", "status"]
     }
   },
   "firestore": {
@@ -172,6 +192,10 @@
     "/reviews/{reviewId}": {
       "schema": "Review",
       "description": "Company reviews"
+    },
+    "/articles/{articleId}": {
+      "schema": "Article",
+      "description": "Career advice articles"
     }
   }
 }

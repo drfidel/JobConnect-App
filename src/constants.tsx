@@ -1,5 +1,35 @@
 import { Laptop, Heart, TrendingUp, ShoppingBag, Truck, Utensils, Construction, GraduationCap } from 'lucide-react';
 
+export const ARTICLE_CATEGORIES = [
+  'Resume Tips',
+  'Interview Prep',
+  'Networking',
+  'Career Change',
+  'Salary & Benefits',
+  'Remote Work',
+  'Personal Branding',
+  'Soft Skills',
+  'Career Growth',
+  'Work-Life Balance',
+  'Industry Trends',
+  'Medical Education'
+];
+
+export const JOB_CATEGORIES = [
+  'Technology',
+  'Healthcare',
+  'Finance',
+  'Education',
+  'Marketing',
+  'Sales',
+  'Design',
+  'Engineering',
+  'Customer Support',
+  'Human Resources',
+  'Operations',
+  'Legal'
+];
+
 export const CATEGORIES = [
   { id: 'tech', label: 'Technology', icon: Laptop, color: 'bg-blue-50 text-blue-600' },
   { id: 'health', label: 'Healthcare', icon: Heart, color: 'bg-red-50 text-red-600' },

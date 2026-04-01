@@ -21,6 +21,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import CareerAdvice from './pages/CareerAdvice';
 import ArticleDetails from './pages/ArticleDetails';
+import AdminArticles from './pages/AdminArticles';
 
 interface AuthContextType {
   user: User | null;
@@ -136,6 +137,10 @@ export default function App() {
                   <Route 
                     path="/admin" 
                     element={user && profile?.role === 'admin' ? <AdminPanel /> : <Navigate to="/" />} 
+                  />
+                  <Route 
+                    path="/admin/articles" 
+                    element={user && profile?.role === 'admin' ? <AdminArticles /> : <Navigate to="/" />} 
                   />
                 </Routes>
               </main>

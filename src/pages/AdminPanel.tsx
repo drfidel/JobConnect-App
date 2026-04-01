@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth, useDarkMode } from '../App';
 import { Job, UserProfile, Company, Application, Review } from '../types';
-import { Shield, Users, Briefcase, CheckCircle, XCircle, Trash2, Loader2, Search, Filter, AlertTriangle, ChevronRight, LayoutDashboard, BarChart3, Star, Sun, Moon, TrendingUp, User, MessageSquare, Flag } from 'lucide-react';
+import { Shield, Users, Briefcase, CheckCircle, XCircle, Trash2, Loader2, Search, Filter, AlertTriangle, ChevronRight, LayoutDashboard, BarChart3, Star, Sun, Moon, TrendingUp, User, MessageSquare, Flag, BookOpen } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Cell, PieChart, Pie } from 'recharts';
@@ -12,13 +13,14 @@ import { reviewService } from '../services/reviewService';
 
 export default function AdminPanel() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'jobs' | 'users' | 'analytics' | 'reviews'>('jobs');
+  const [activeTab, setActiveTab] = useState<'jobs' | 'users' | 'analytics' | 'reviews' | 'articles'>('jobs');
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<'all' | 'seeker' | 'employer' | 'admin'>('all');
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
@@ -206,6 +208,7 @@ export default function AdminPanel() {
           { id: 'jobs', label: 'Job Moderation', icon: Briefcase },
           { id: 'users', label: 'User Management', icon: Users },
           { id: 'reviews', label: 'Review Moderation', icon: MessageSquare },
+          { id: 'articles', label: 'Career Advice', icon: BookOpen },
           { id: 'analytics', label: 'Analytics', icon: BarChart3 }
         ].map(tab => (
           <button
@@ -598,6 +601,24 @@ export default function AdminPanel() {
                 </div>
               )}
             </AnimatePresence>
+          </div>
+        )}
+
+        {activeTab === 'articles' && (
+          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden p-12 text-center transition-colors duration-300">
+            <div className="w-20 h-20 bg-blue-50 dark:bg-blue-900/30 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600 dark:text-blue-400">
+              <BookOpen size={40} />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Career Advice Management</h3>
+            <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto mb-8">
+              Create, edit, and publish expert articles to help job seekers navigate their professional journey.
+            </p>
+            <button 
+              onClick={() => navigate('/admin/articles')}
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            >
+              Go to Article Manager <ChevronRight size={20} />
+            </button>
           </div>
         )}
 

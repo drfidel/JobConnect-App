@@ -1,23 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, BookOpen, Clock, User, ArrowRight, ChevronRight, Filter } from 'lucide-react';
-import { articles } from '../data/articles';
+import { articles as mockArticles } from '../data/articles';
+import { articleService } from '../services/articleService';
+import { Article } from '../types';
 import { motion } from 'motion/react';
 
 export default function CareerAdvice() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const categories = ['All', ...new Set(articles.map(a => a.category))];
+  useEffect(() => {
+    let isMounted = true;
+    const fetchArticles = async () => {
+      try {
+        setIsLoading(true);
+        console.log('Fetching articles from Firestore...');
+        const firestoreArticles = await articleService.getAllArticles().catch(err => {
+          console.error('Firestore fetch failed, using mock data only:', err);
+          return [];
+        });
+        
+        if (!isMounted) return;
 
-  const filteredArticles = articles.filter(article => {
+        // Combine mock articles with firestore articles, avoiding duplicates by title
+        const combined = [...firestoreArticles];
+        const firestoreTitles = new Set(firestoreArticles.map(a => a.title.toLowerCase()));
+        
+        mockArticles.forEach(mock => {
+          if (!firestoreTitles.has(mock.title.toLowerCase())) {
+            combined.push({
+              ...mock,
+              image: mock.imageUrl, // Map imageUrl to image for consistency
+              status: 'published'
+            } as Article);
+          }
+        });
+        
+        console.log(`Loaded ${combined.length} articles total.`);
+        setArticles(combined);
+      } catch (error) {
+        console.error('Error in fetchArticles effect:', error);
+        if (isMounted) {
+          setArticles(mockArticles.map(m => ({ ...m, image: m.imageUrl, status: 'published' } as Article)));
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchArticles();
+    return () => { isMounted = false; };
+  }, []);
+
+  const categoriesWithCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    articles.forEach(article => {
+      counts[article.category] = (counts[article.category] || 0) + 1;
+    });
+    
+    // Use ARTICLE_CATEGORIES to maintain a consistent order, but only show those that have articles
+    // or just show all of them if we want to encourage content creation?
+    // Let's stick to dynamic categories for now but with counts.
+    const dynamicCategories = Object.keys(counts).sort();
+    return [
+      { name: 'All', count: articles.length },
+      ...dynamicCategories.map(name => ({ name, count: counts[name] }))
+    ];
+  }, [articles]);
+
+  const filteredArticles = useMemo(() => articles.filter(article => {
     const matchesSearch = article.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                          article.excerpt.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || article.category === selectedCategory;
     return matchesSearch && matchesCategory;
-  });
+  }), [articles, searchTerm, selectedCategory]);
 
-  const featuredArticle = articles[0];
+  const featuredArticle = articles.length > 0 ? articles[0] : null;
+
+  if (isLoading && articles.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-12">
@@ -48,19 +119,26 @@ export default function CareerAdvice() {
               className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-blue-500 text-gray-900 dark:text-white"
             />
           </div>
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 w-full md:w-auto scrollbar-hide">
             <Filter size={18} className="text-gray-400 mr-2 hidden md:block" />
-            {categories.map(category => (
+            {categoriesWithCounts.map(category => (
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === category
-                    ? 'bg-blue-600 text-white'
+                key={category.name}
+                onClick={() => setSelectedCategory(category.name)}
+                className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all flex items-center gap-2 ${
+                  selectedCategory === category.name
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
                 }`}
               >
-                {category}
+                <span>{category.name}</span>
+                <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+                  selectedCategory === category.name
+                    ? 'bg-white/20 text-white'
+                    : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                }`}>
+                  {category.count}
+                </span>
               </button>
             ))}
           </div>
@@ -68,7 +146,7 @@ export default function CareerAdvice() {
       </div>
 
       {/* Featured Article */}
-      {searchTerm === '' && selectedCategory === 'All' && (
+      {searchTerm === '' && selectedCategory === 'All' && featuredArticle && (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -78,7 +156,7 @@ export default function CareerAdvice() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center bg-blue-50 dark:bg-blue-900/10 rounded-3xl overflow-hidden border border-blue-100 dark:border-blue-900/20">
             <div className="h-64 lg:h-full relative">
               <img 
-                src={featuredArticle.imageUrl} 
+                src={featuredArticle.image || featuredArticle.imageUrl} 
                 alt={featuredArticle.title}
                 className="absolute inset-0 w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -124,7 +202,7 @@ export default function CareerAdvice() {
           >
             <Link to={`/career-advice/${article.id}`} className="relative h-48 overflow-hidden">
               <img 
-                src={article.imageUrl} 
+                src={article.image || article.imageUrl} 
                 alt={article.title}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                 referrerPolicy="no-referrer"
